@@ -7,9 +7,12 @@ import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileCommand;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.out.FileStoragePort;
 import eu.noxone.phoniebox.media.application.port.out.MediaFileRepository;
+import eu.noxone.phoniebox.media.domain.model.FileSize;
 import eu.noxone.phoniebox.media.domain.model.MediaFile;
 import eu.noxone.phoniebox.media.domain.model.MediaFileId;
 import eu.noxone.phoniebox.media.domain.model.MediaFileMetadata;
+import eu.noxone.phoniebox.media.domain.model.MimeType;
+import eu.noxone.phoniebox.media.domain.model.OriginalFileName;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -42,9 +45,9 @@ public class MediaFileApplicationService
     @Transactional
     public MediaFile upload(final UploadMediaFileCommand command) {
         final var metadata = new MediaFileMetadata(
-                command.originalFileName(),
-                command.mimeType(),
-                command.sizeInBytes()
+                OriginalFileName.of(command.originalFileName()),
+                MimeType.of(command.mimeType()),
+                FileSize.of(command.sizeInBytes())
         );
         final var mediaFile = MediaFile.create(metadata);
         // Store bytes first – if this fails the transaction rolls back and no orphan row is created

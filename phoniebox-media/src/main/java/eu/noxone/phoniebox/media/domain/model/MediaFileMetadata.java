@@ -1,37 +1,40 @@
 package eu.noxone.phoniebox.media.domain.model;
 
+import eu.noxone.phoniebox.shared.domain.DomainAttribute;
+
 import java.util.Objects;
 
 /**
- * Immutable value object capturing file-level metadata supplied at upload time.
+ * Compound value object capturing file-level metadata supplied at upload time.
  *
- * <p>The domain does not validate MIME types against any external registry; that
- * responsibility belongs to the infrastructure layer or the web adapter.
+ * <p>Implements {@link DomainAttribute} so it can be used as a field on
+ * {@link MediaFile} without violating the entity-field rule.  Each sub-value
+ * is itself a typed {@link DomainAttribute} rather than a raw Java type.
  */
-public final class MediaFileMetadata {
+public final class MediaFileMetadata implements DomainAttribute {
 
-    private final String originalFileName;
-    private final String mimeType;
-    private final long sizeInBytes;
+    private final OriginalFileName originalFileName;
+    private final MimeType mimeType;
+    private final FileSize sizeInBytes;
 
-    public MediaFileMetadata(final String originalFileName, final String mimeType, final long sizeInBytes) {
+    public MediaFileMetadata(
+            final OriginalFileName originalFileName,
+            final MimeType mimeType,
+            final FileSize sizeInBytes) {
         this.originalFileName = Objects.requireNonNull(originalFileName, "originalFileName must not be null");
         this.mimeType = Objects.requireNonNull(mimeType, "mimeType must not be null");
-        if (sizeInBytes < 0) {
-            throw new IllegalArgumentException("sizeInBytes must not be negative");
-        }
-        this.sizeInBytes = sizeInBytes;
+        this.sizeInBytes = Objects.requireNonNull(sizeInBytes, "sizeInBytes must not be null");
     }
 
-    public String getOriginalFileName() {
+    public OriginalFileName getOriginalFileName() {
         return originalFileName;
     }
 
-    public String getMimeType() {
+    public MimeType getMimeType() {
         return mimeType;
     }
 
-    public long getSizeInBytes() {
+    public FileSize getSizeInBytes() {
         return sizeInBytes;
     }
 
@@ -43,9 +46,9 @@ public final class MediaFileMetadata {
         if (!(o instanceof MediaFileMetadata that)) {
             return false;
         }
-        return sizeInBytes == that.sizeInBytes
-                && Objects.equals(originalFileName, that.originalFileName)
-                && Objects.equals(mimeType, that.mimeType);
+        return Objects.equals(originalFileName, that.originalFileName)
+                && Objects.equals(mimeType, that.mimeType)
+                && Objects.equals(sizeInBytes, that.sizeInBytes);
     }
 
     @Override
@@ -56,8 +59,8 @@ public final class MediaFileMetadata {
     @Override
     public String toString() {
         return "MediaFileMetadata{"
-                + "originalFileName='" + originalFileName + '\''
-                + ", mimeType='" + mimeType + '\''
+                + "originalFileName=" + originalFileName
+                + ", mimeType=" + mimeType
                 + ", sizeInBytes=" + sizeInBytes
                 + '}';
     }

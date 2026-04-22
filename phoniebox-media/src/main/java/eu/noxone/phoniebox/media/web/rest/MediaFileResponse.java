@@ -9,6 +9,8 @@ import java.util.UUID;
  * JSON response DTO for a single media file.
  *
  * <p>Deliberately kept flat (no nesting) for simple frontend consumption.
+ * Domain attribute values are unwrapped here — the web layer is the correct
+ * place to convert domain types to serialisable primitives.
  * Mapping from the domain aggregate happens via the static factory {@link #from}.
  */
 public record MediaFileResponse(
@@ -22,10 +24,10 @@ public record MediaFileResponse(
     public static MediaFileResponse from(final MediaFile domain) {
         return new MediaFileResponse(
                 domain.getId().getValue(),
-                domain.getMetadata().getOriginalFileName(),
-                domain.getMetadata().getMimeType(),
-                domain.getMetadata().getSizeInBytes(),
-                domain.getUploadedAt()
+                domain.getMetadata().getOriginalFileName().getValue(),
+                domain.getMetadata().getMimeType().getValue(),
+                domain.getMetadata().getSizeInBytes().getValue(),
+                domain.getUploadedAt().getValue()
         );
     }
 }

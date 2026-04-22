@@ -1,16 +1,19 @@
 package eu.noxone.phoniebox.shared.domain.valueobject;
 
-import java.util.Objects;
+import eu.noxone.phoniebox.shared.domain.DefaultDomainAttribute;
+
 import java.util.UUID;
 
 /**
  * Base class for strongly-typed UUID-based identity value objects.
  *
- * <p>Subclasses gain type-safety over raw UUIDs while keeping equality,
- * hashing and string representation consistent across the domain.
+ * <p>Extends {@link DefaultDomainAttribute}{@code <UUID>} to inherit value
+ * equality, hashing, and {@code toString}.  Subclasses gain type-safety over
+ * raw {@link UUID}s while satisfying the {@code DomainAttribute} contract
+ * required on entity fields.
  *
  * <pre>{@code
- * public class MediaFileId extends AbstractId {
+ * public final class MediaFileId extends AbstractId {
  *     private MediaFileId(UUID value) { super(value); }
  *     public static MediaFileId newId()          { return new MediaFileId(UUID.randomUUID()); }
  *     public static MediaFileId of(UUID value)   { return new MediaFileId(value); }
@@ -18,41 +21,14 @@ import java.util.UUID;
  * }
  * }</pre>
  */
-public abstract class AbstractId {
-
-    private final UUID value;
+public abstract class AbstractId extends DefaultDomainAttribute<UUID> {
 
     protected AbstractId(final UUID value) {
-        this.value = Objects.requireNonNull(value, "ID value must not be null");
+        super(value);
     }
 
-    public UUID getValue() {
-        return value;
-    }
-
+    /** Returns the UUID as a lower-case hyphenated string. */
     public String asString() {
-        return value.toString();
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final AbstractId that = (AbstractId) o;
-        return Objects.equals(value, that.value);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(value);
-    }
-
-    @Override
-    public String toString() {
-        return value.toString();
+        return getValue().toString();
     }
 }

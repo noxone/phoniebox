@@ -19,6 +19,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>eu.noxone.phoniebox</groupId>
+            <artifactId>phoniebox-shared</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit-junit5</artifactId>
         </dependency>

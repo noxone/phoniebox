@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that the {@code phoniebox-audio} module respects onion-architecture
- * layer boundaries as defined by {@link OnionArchitectureRules}.
+ * layer boundaries and domain model conventions as defined by
+ * {@link OnionArchitectureRules}.
  */
 class ArchitectureTest {
 
@@ -34,5 +35,15 @@ class ArchitectureTest {
     @Test
     void webDoesNotDependOnInfrastructure() {
         OnionArchitectureRules.webDoesNotDependOnInfrastructure(BASE_PACKAGE).check(classes);
+    }
+
+    @Test
+    void domainModelClassesMustBeEntityOrAttribute() {
+        OnionArchitectureRules.domainModelClassesMustBeEntityOrAttribute(BASE_PACKAGE).check(classes);
+    }
+
+    @Test
+    void entityFieldsMustBeDomainAttributes() {
+        OnionArchitectureRules.entityFieldsMustBeDomainAttributes().check(classes);
     }
 }

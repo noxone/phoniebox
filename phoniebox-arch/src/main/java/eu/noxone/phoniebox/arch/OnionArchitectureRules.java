@@ -1,7 +1,15 @@
 package eu.noxone.phoniebox.arch;
 
+import com.tngtech.archunit.core.domain.JavaField;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import eu.noxone.phoniebox.shared.domain.DomainAttribute;
+import eu.noxone.phoniebox.shared.domain.DomainEntity;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -29,23 +37,20 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
  *   <li>web          → domain + application  (never infrastructure)
  * </ul>
  *
- * <h2>Usage in a feature module test</h2>
- * <pre>{@code
- * class ArchitectureTest {
- *     private static final JavaClasses CLASSES =
- *         new ClassFileImporter().importPackages("eu.noxone.phoniebox.media");
- *
- *     @Test void domainIsIsolated() {
- *         OnionArchitectureRules.domainDoesNotDependOnOtherLayers("eu.noxone.phoniebox.media")
- *             .check(CLASSES);
- *     }
- * }
- * }</pre>
+ * <h2>Domain model rules</h2>
+ * <ul>
+ *   <li>All concrete classes in {@code domain.model} must implement
+ *       {@link DomainEntity} or {@link DomainAttribute}.
+ *   <li>All instance fields declared on a {@link DomainEntity} must implement
+ *       {@link DomainAttribute} — plain Java types are not permitted.
+ * </ul>
  */
 public final class OnionArchitectureRules {
 
     private OnionArchitectureRules() {
     }
+
+    // ── Layer boundary rules ──────────────────────────────────────────────────
 
     /**
      * Domain classes must not reference application, infrastructure or web classes.
@@ -91,15 +96,72 @@ public final class OnionArchitectureRules {
                 .allowEmptyShould(true);
     }
 
+    // ── Domain model rules ────────────────────────────────────────────────────
+
     /**
-     * Convenience: checks all three onion rules at once.
-     * Prefer calling the individual methods when you want descriptive test names.
+     * Every concrete class in the {@code domain.model} package must implement
+     * either {@link DomainEntity} or {@link DomainAttribute}.
+     *
+     * <p>This prevents plain POJOs or data-bags from entering the domain model
+     * without being tagged with their intended role.
+     */
+    public static ArchRule domainModelClassesMustBeEntityOrAttribute(final String basePackage) {
+        return classes()
+                .that().resideInAPackage(basePackage + ".domain.model..")
+                .and().areNotInterfaces()
+                .and().areNotAnonymousClasses()
+                .should().beAssignableTo(DomainEntity.class)
+                .orShould().beAssignableTo(DomainAttribute.class)
+                .as("All concrete domain model classes must implement DomainEntity or DomainAttribute")
+                .allowEmptyShould(true);
+    }
+
+    /**
+     * Every instance field declared on a {@link DomainEntity} class must be of
+     * a type that implements {@link DomainAttribute}.
+     *
+     * <p>This enforces that entities never hold raw Java types ({@code String},
+     * {@code int}, {@code boolean}, …) directly — every value must be expressed
+     * through a named, typed domain attribute.
+     */
+    public static ArchRule entityFieldsMustBeDomainAttributes() {
+        final ArchCondition<JavaField> beDomainAttribute =
+                new ArchCondition<>("be of a type that implements DomainAttribute") {
+                    @Override
+                    public void check(final JavaField field, final ConditionEvents events) {
+                        if (!field.getRawType().isAssignableTo(DomainAttribute.class)) {
+                            events.add(SimpleConditionEvent.violated(
+                                    field,
+                                    String.format(
+                                            "Field [%s] in [%s] has type [%s] which does not implement DomainAttribute",
+                                            field.getName(),
+                                            field.getOwner().getName(),
+                                            field.getRawType().getName())));
+                        }
+                    }
+                };
+
+        return fields()
+                .that().areDeclaredInClassesThat().implement(DomainEntity.class)
+                .and().areNotStatic()
+                .should(beDomainAttribute)
+                .as("All instance fields of DomainEntity classes must implement DomainAttribute")
+                .allowEmptyShould(true);
+    }
+
+    // ── Convenience ──────────────────────────────────────────────────────────
+
+    /**
+     * Returns all rules for a feature module.  Prefer calling the individual
+     * methods when you want descriptive test names.
      */
     public static ArchRule[] allRules(final String basePackage) {
         return new ArchRule[]{
                 domainDoesNotDependOnOtherLayers(basePackage),
                 applicationDoesNotDependOnInfrastructureOrWeb(basePackage),
-                webDoesNotDependOnInfrastructure(basePackage)
+                webDoesNotDependOnInfrastructure(basePackage),
+                domainModelClassesMustBeEntityOrAttribute(basePackage),
+                entityFieldsMustBeDomainAttributes(),
         };
     }
 }

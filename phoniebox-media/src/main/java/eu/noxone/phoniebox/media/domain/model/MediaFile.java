@@ -1,6 +1,7 @@
 package eu.noxone.phoniebox.media.domain.model;
 
-import java.time.Instant;
+import eu.noxone.phoniebox.shared.domain.DefaultDomainEntity;
+
 import java.util.Objects;
 
 /**
@@ -9,19 +10,23 @@ import java.util.Objects;
  * <p>The physical bytes are stored separately (managed by {@code FileStoragePort}).
  * This entity holds only identity and descriptive metadata.
  *
+ * <p>Extends {@link DefaultDomainEntity} to inherit identity-based equality
+ * and {@code toString}.  All fields implement {@link eu.noxone.phoniebox.shared.domain.DomainAttribute}
+ * as required by the domain model contract.
+ *
  * <p>Two factory methods keep construction intent explicit:
  * <ul>
  *   <li>{@link #create} – mints a new identity and records the current time.
  *   <li>{@link #reconstitute} – rebuilds the aggregate from persisted state.
  * </ul>
  */
-public final class MediaFile {
+public final class MediaFile extends DefaultDomainEntity<MediaFileId> {
 
     private final MediaFileId id;
     private final MediaFileMetadata metadata;
-    private final Instant uploadedAt;
+    private final UploadedAt uploadedAt;
 
-    private MediaFile(final MediaFileId id, final MediaFileMetadata metadata, final Instant uploadedAt) {
+    private MediaFile(final MediaFileId id, final MediaFileMetadata metadata, final UploadedAt uploadedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
         this.metadata = Objects.requireNonNull(metadata, "metadata must not be null");
         this.uploadedAt = Objects.requireNonNull(uploadedAt, "uploadedAt must not be null");
@@ -29,14 +34,15 @@ public final class MediaFile {
 
     /** Creates a brand-new {@code MediaFile} with a fresh {@link MediaFileId} and the current timestamp. */
     public static MediaFile create(final MediaFileMetadata metadata) {
-        return new MediaFile(MediaFileId.newId(), metadata, Instant.now());
+        return new MediaFile(MediaFileId.newId(), metadata, UploadedAt.now());
     }
 
     /** Rebuilds an existing {@code MediaFile} from persisted values. Never generates a new ID or timestamp. */
-    public static MediaFile reconstitute(final MediaFileId id, final MediaFileMetadata metadata, final Instant uploadedAt) {
+    public static MediaFile reconstitute(final MediaFileId id, final MediaFileMetadata metadata, final UploadedAt uploadedAt) {
         return new MediaFile(id, metadata, uploadedAt);
     }
 
+    @Override
     public MediaFileId getId() {
         return id;
     }
@@ -45,7 +51,7 @@ public final class MediaFile {
         return metadata;
     }
 
-    public Instant getUploadedAt() {
+    public UploadedAt getUploadedAt() {
         return uploadedAt;
     }
 }

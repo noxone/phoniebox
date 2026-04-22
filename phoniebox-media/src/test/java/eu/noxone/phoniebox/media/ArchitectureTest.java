@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Verifies that the {@code phoniebox-media} module respects onion-architecture
- * layer boundaries as defined by {@link OnionArchitectureRules}.
+ * layer boundaries and domain model conventions as defined by
+ * {@link OnionArchitectureRules}.
  *
  * <p>These tests are intentionally free of Quarkus / CDI: they only inspect
  * compiled bytecode and run fast without a container.
@@ -24,6 +25,8 @@ class ArchitectureTest {
         classes = new ClassFileImporter().importPackages(BASE_PACKAGE);
     }
 
+    // ── Layer boundary rules ──────────────────────────────────────────────────
+
     @Test
     void domainDoesNotDependOnOtherLayers() {
         OnionArchitectureRules.domainDoesNotDependOnOtherLayers(BASE_PACKAGE).check(classes);
@@ -37,5 +40,17 @@ class ArchitectureTest {
     @Test
     void webDoesNotDependOnInfrastructure() {
         OnionArchitectureRules.webDoesNotDependOnInfrastructure(BASE_PACKAGE).check(classes);
+    }
+
+    // ── Domain model rules ────────────────────────────────────────────────────
+
+    @Test
+    void domainModelClassesMustBeEntityOrAttribute() {
+        OnionArchitectureRules.domainModelClassesMustBeEntityOrAttribute(BASE_PACKAGE).check(classes);
+    }
+
+    @Test
+    void entityFieldsMustBeDomainAttributes() {
+        OnionArchitectureRules.entityFieldsMustBeDomainAttributes().check(classes);
     }
 }
