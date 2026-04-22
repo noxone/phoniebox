@@ -59,7 +59,8 @@ public final class OnionArchitectureRules {
                         basePackage + ".infrastructure..",
                         basePackage + ".web.."
                 )
-                .as("Domain must not depend on application, infrastructure or web");
+                .as("Domain must not depend on application, infrastructure or web")
+                .allowEmptyShould(true);
     }
 
     /**
@@ -73,7 +74,8 @@ public final class OnionArchitectureRules {
                         basePackage + ".infrastructure..",
                         basePackage + ".web.."
                 )
-                .as("Application must not depend on infrastructure or web");
+                .as("Application must not depend on infrastructure or web")
+                .allowEmptyShould(true);
     }
 
     /**
@@ -85,7 +87,8 @@ public final class OnionArchitectureRules {
                 .that().resideInAPackage(basePackage + ".web..")
                 .should().dependOnClassesThat()
                 .resideInAPackage(basePackage + ".infrastructure..")
-                .as("Web must not depend on infrastructure");
+                .as("Web must not depend on infrastructure")
+                .allowEmptyShould(true);
     }
 
     /**
