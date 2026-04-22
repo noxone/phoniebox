@@ -1,0 +1,34 @@
+const BASE = '/api/media'
+
+export interface MediaFile {
+  id: string
+  originalFileName: string
+  mimeType: string
+  sizeInBytes: number
+  uploadedAt: string  // ISO-8601
+}
+
+export async function listMediaFiles(): Promise<MediaFile[]> {
+  const res = await fetch(BASE)
+  if (!res.ok) throw new Error(`Failed to list media files: ${res.status}`)
+  return res.json()
+}
+
+export async function getMediaFile(id: string): Promise<MediaFile> {
+  const res = await fetch(`${BASE}/${id}`)
+  if (!res.ok) throw new Error(`Media file not found: ${id}`)
+  return res.json()
+}
+
+export async function uploadMediaFile(file: File): Promise<MediaFile> {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(BASE, { method: 'POST', body: form })
+  if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+  return res.json()
+}
+
+export async function deleteMediaFile(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Delete failed: ${res.status}`)
+}

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>eu.noxone.phoniebox</groupId>
+        <artifactId>phoniebox-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>phoniebox-audio</artifactId>
+    <name>Phoniebox :: Audio</name>
+
+    <!-- TODO: Planned dependencies
+         - eu.noxone.phoniebox:phoniebox-shared
+         - io.quarkus:quarkus-arc
+         - uk.co.caprica:vlcj  (audio playback via libVLC)
+    -->
+
+    <dependencies>
+        <dependency>
+            <groupId>eu.noxone.phoniebox</groupId>
+            <artifactId>phoniebox-shared</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>eu.noxone.phoniebox</groupId>
+            <artifactId>phoniebox-arch</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-junit5</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>
