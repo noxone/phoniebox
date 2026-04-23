@@ -13,6 +13,19 @@
     <artifactId>phoniebox-shared</artifactId>
     <name>Phoniebox :: Shared</name>
 
-    <!-- Pure Java, zero framework dependencies.
-         Contains only primitives and abstractions shared across all feature modules. -->
+    <!--
+        Shared domain primitives and infrastructure helpers.
+        The only external dependency is the Jakarta Persistence API, which is
+        used solely for the DomainAttributeConverter base class.  It is declared
+        as "provided" so it is never shipped as a transitive runtime dependency —
+        the actual implementation (Hibernate) is provided by the application module.
+    -->
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 </project>

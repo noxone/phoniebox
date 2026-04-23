@@ -1,6 +1,11 @@
 package eu.noxone.phoniebox.media.domain.model;
 
 import eu.noxone.phoniebox.shared.domain.DefaultDomainEntity;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import java.util.Objects;
 
@@ -10,21 +15,35 @@ import java.util.Objects;
  * <p>The physical bytes are stored separately (managed by {@code FileStoragePort}).
  * This entity holds only identity and descriptive metadata.
  *
- * <p>Extends {@link DefaultDomainEntity} to inherit identity-based equality
- * and {@code toString}.  All fields implement {@link eu.noxone.phoniebox.shared.domain.DomainAttribute}
- * as required by the domain model contract.
+ * <p>This class is both a domain entity (extends {@link DefaultDomainEntity}) and
+ * a JPA entity ({@code @Entity}).  The JPA annotations are considered acceptable
+ * in the domain layer because they are declarative metadata from the standard
+ * Jakarta Persistence API — they carry no Quarkus or Hibernate-specific behaviour.
+ * All attribute type conversion is handled by {@code @AttributeConverter} classes
+ * in the infrastructure layer (with {@code autoApply = true}), so no
+ * {@code @Convert} references appear here.
  *
- * <p>Two factory methods keep construction intent explicit:
- * <ul>
- *   <li>{@link #create} – mints a new identity and records the current time.
- *   <li>{@link #reconstitute} – rebuilds the aggregate from persisted state.
- * </ul>
+ * <p>Fields are non-final to allow Hibernate to populate them after constructing
+ * the instance via the protected no-arg constructor.  The domain factory method
+ * {@link #create} remains the only public way to create a new aggregate.
  */
-public final class MediaFile extends DefaultDomainEntity<MediaFileId> {
+@Entity
+@Table(name = "media_files")
+public class MediaFile extends DefaultDomainEntity<MediaFileId> {
 
-    private final MediaFileId id;
-    private final MediaFileMetadata metadata;
-    private final UploadedAt uploadedAt;
+    @Id
+    @Column(name = "id", nullable = false, updatable = false)
+    private MediaFileId id;
+
+    @Embedded
+    private MediaFileMetadata metadata;
+
+    @Column(name = "uploaded_at", nullable = false)
+    private UploadedAt uploadedAt;
+
+    /** Required by JPA. Not for use by application code. */
+    protected MediaFile() {
+    }
 
     private MediaFile(final MediaFileId id, final MediaFileMetadata metadata, final UploadedAt uploadedAt) {
         this.id = Objects.requireNonNull(id, "id must not be null");
@@ -35,11 +54,6 @@ public final class MediaFile extends DefaultDomainEntity<MediaFileId> {
     /** Creates a brand-new {@code MediaFile} with a fresh {@link MediaFileId} and the current timestamp. */
     public static MediaFile create(final MediaFileMetadata metadata) {
         return new MediaFile(MediaFileId.newId(), metadata, UploadedAt.now());
-    }
-
-    /** Rebuilds an existing {@code MediaFile} from persisted values. Never generates a new ID or timestamp. */
-    public static MediaFile reconstitute(final MediaFileId id, final MediaFileMetadata metadata, final UploadedAt uploadedAt) {
-        return new MediaFile(id, metadata, uploadedAt);
     }
 
     @Override

@@ -1,71 +1,55 @@
 package eu.noxone.phoniebox.media.infrastructure.persistence;
 
 import eu.noxone.phoniebox.media.application.port.out.MediaFileRepository;
-import eu.noxone.phoniebox.media.domain.model.FileSize;
 import eu.noxone.phoniebox.media.domain.model.MediaFile;
 import eu.noxone.phoniebox.media.domain.model.MediaFileId;
-import eu.noxone.phoniebox.media.domain.model.MediaFileMetadata;
-import eu.noxone.phoniebox.media.domain.model.MimeType;
-import eu.noxone.phoniebox.media.domain.model.OriginalFileName;
-import eu.noxone.phoniebox.media.domain.model.UploadedAt;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Adapter that bridges {@link MediaFileRepository} (application port) to
- * Panache / Hibernate ORM (infrastructure).
+ * Adapter that implements the {@link MediaFileRepository} port by delegating to
+ * {@link MediaFilePanacheRepository}.
  *
- * <p>All mapping between the domain model and the persistence entity is kept
- * here; neither the domain nor the application service knows about JPA.
+ * <p>Because {@link MediaFile} is itself a JPA {@code @Entity}, no manual
+ * domain↔persistence mapping is needed.  Hibernate's dirty-checking mechanism
+ * automatically persists any field changes made to a managed {@link MediaFile}
+ * instance when the surrounding transaction commits.
+ *
+ * <p>The separation from {@link MediaFilePanacheRepository} avoids method-signature
+ * conflicts: Panache's {@code findById} returns the entity directly while the port
+ * declares it as {@code Optional}; similarly Panache's {@code findAll} returns a
+ * {@code PanacheQuery} while the port declares a plain {@code List}.
  */
 @ApplicationScoped
 public class MediaFileRepositoryAdapter implements MediaFileRepository {
 
+    private final MediaFilePanacheRepository panache;
+
+    @Inject
+    public MediaFileRepositoryAdapter(final MediaFilePanacheRepository panache) {
+        this.panache = panache;
+    }
+
     @Override
     public void save(final MediaFile mediaFile) {
-        toEntity(mediaFile).persist();
+        panache.persist(mediaFile);
     }
 
     @Override
     public Optional<MediaFile> findById(final MediaFileId id) {
-        return MediaFileEntity.<MediaFileEntity>findByIdOptional(id.asString())
-                .map(this::toDomain);
+        return panache.findByIdOptional(id);
     }
 
     @Override
     public List<MediaFile> findAll() {
-        return MediaFileEntity.<MediaFileEntity>listAll()
-                .stream()
-                .map(this::toDomain)
-                .toList();
+        return panache.listAll();
     }
 
     @Override
     public boolean deleteById(final MediaFileId id) {
-        return MediaFileEntity.deleteById(id.asString());
-    }
-
-    // ── Mapping ─────────────────────────────────────────────────────────────
-
-    private MediaFileEntity toEntity(final MediaFile domain) {
-        final var entity = new MediaFileEntity();
-        entity.id = domain.getId().asString();
-        entity.originalFileName = domain.getMetadata().getOriginalFileName().getValue();
-        entity.mimeType = domain.getMetadata().getMimeType().getValue();
-        entity.sizeInBytes = domain.getMetadata().getSizeInBytes().getValue();
-        entity.uploadedAt = domain.getUploadedAt().getValue();
-        return entity;
-    }
-
-    private MediaFile toDomain(final MediaFileEntity entity) {
-        return MediaFile.reconstitute(
-                MediaFileId.of(entity.id),
-                new MediaFileMetadata(
-                        OriginalFileName.of(entity.originalFileName),
-                        MimeType.of(entity.mimeType),
-                        FileSize.of(entity.sizeInBytes)),
-                UploadedAt.of(entity.uploadedAt));
+        return panache.deleteById(id);
     }
 }

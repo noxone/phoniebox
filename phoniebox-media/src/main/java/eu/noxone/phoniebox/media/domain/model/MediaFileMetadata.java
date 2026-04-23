@@ -1,6 +1,8 @@
 package eu.noxone.phoniebox.media.domain.model;
 
 import eu.noxone.phoniebox.shared.domain.DomainAttribute;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 
 import java.util.Objects;
 
@@ -9,13 +11,29 @@ import java.util.Objects;
  *
  * <p>Implements {@link DomainAttribute} so it can be used as a field on
  * {@link MediaFile} without violating the entity-field rule.  Each sub-value
- * is itself a typed {@link DomainAttribute} rather than a raw Java type.
+ * is itself a typed {@link DomainAttribute} whose persistence conversion is
+ * handled by an {@code @AttributeConverter(autoApply = true)} in the
+ * infrastructure layer.
+ *
+ * <p>Marked {@code @Embeddable} so JPA maps its three columns directly into
+ * the {@code media_files} table alongside the entity's own columns.
+ * Fields are non-final and a no-arg constructor is provided for JPA.
  */
-public final class MediaFileMetadata implements DomainAttribute {
+@Embeddable
+public class MediaFileMetadata implements DomainAttribute {
 
-    private final OriginalFileName originalFileName;
-    private final MimeType mimeType;
-    private final FileSize sizeInBytes;
+    @Column(name = "original_file_name", nullable = false)
+    private OriginalFileName originalFileName;
+
+    @Column(name = "mime_type", nullable = false)
+    private MimeType mimeType;
+
+    @Column(name = "size_in_bytes", nullable = false)
+    private FileSize sizeInBytes;
+
+    /** Required by JPA. Not for use by application code. */
+    protected MediaFileMetadata() {
+    }
 
     public MediaFileMetadata(
             final OriginalFileName originalFileName,
