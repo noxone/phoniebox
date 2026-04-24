@@ -113,8 +113,42 @@ Compound value objects (e.g. `MediaFileMetadata`) implement `DomainAttribute` di
 ### Persistence
 
 - **Database**: SQLite (embedded, zero-setup). Schema managed by Flyway; migrations in `phoniebox-app/src/main/resources/db/migration/`.
-- **ORM**: Hibernate Panache (repository pattern).
+- **ORM**: Hibernate Panache (repository pattern). Domain entities are annotated directly with `@Entity` / `@Embeddable` — there are no separate JPA entity classes. Hibernate's dirty-checking persists field changes automatically when the transaction commits.
+- **Attribute converters**: Each domain attribute type (e.g. `OriginalFileName`, `MimeType`, `FileSize`, `UploadedAt`, `MediaFileId`) has a corresponding `@Converter(autoApply = true)` in `infrastructure/persistence`. This keeps JPA annotations out of the domain attributes themselves. Two base classes are provided in `phoniebox-shared`:
+
+  | Base class | When to use | Concrete converter |
+  |---|---|---|
+  | `ReflectiveDomainAttributeConverter<A, T>` | Wrapped type == DB column type (e.g. `String`, `Long`) | Empty body — annotation + `extends` only |
+  | `DomainAttributeConverter<A, T>` | Wrapped type ≠ DB column type (e.g. `UUID`→`String`, `Instant`→`String`) | Single-line constructor with explicit functions |
+
+  ```java
+  // wrapped type == DB type → empty body, reflection finds of(T) automatically
+  @Converter(autoApply = true)
+  public class MimeTypeConverter extends ReflectiveDomainAttributeConverter<MimeType, String> {}
+
+  // wrapped type != DB type → explicit fromDatabase / toDatabase functions
+  @Converter(autoApply = true)
+  public class MediaFileIdConverter extends DomainAttributeConverter<MediaFileId, String> {
+      public MediaFileIdConverter() { super(MediaFileId::of, MediaFileId::asString); }
+  }
+  public class UploadedAtConverter extends DomainAttributeConverter<UploadedAt, String> {
+      public UploadedAtConverter() { super(s -> UploadedAt.of(Instant.parse(s)), at -> at.getValue().toString()); }
+  }
+  ```
+
+  `ReflectiveDomainAttributeConverter` resolves the type arguments at construction via `getGenericSuperclass()` and locates the `of(T)` factory method by reflection, trying the primitive equivalent when `T` is a boxed numeric (so `FileSize.of(long)` is found for `T = Long`).
+- **Repository pattern**: Each feature module has a `*PanacheRepository` (a bare `PanacheRepositoryBase` implementation) and a `*RepositoryAdapter` that implements the domain port by delegating to it. The separation avoids method-signature conflicts between Panache conventions and the port interface.
+- **Quarkus indexing**: Library modules (e.g. `phoniebox-media`) are not scanned by Quarkus automatically. Each module that contains JPA entities must be listed in `phoniebox-app/src/main/resources/application.properties` under `quarkus.index-dependency.<name>.*`.
 - **File storage**: Media files stored on local filesystem at `./media-storage` (configurable via `phoniebox.media.storage-path`).
+
+#### JPA annotations in the domain layer
+
+Domain entities and embeddables carry `jakarta.persistence` annotations (`@Entity`, `@Table`, `@Column`, `@Embedded`, `@Embeddable`). This is a deliberate trade-off: eliminating manual domain↔ORM mapping is considered worth the cost of standard-API annotations in the domain. The JPA annotations are purely declarative and contain no Quarkus- or Hibernate-specific behaviour.
+
+Consequences:
+- Domain entity fields must be non-`final` (Hibernate sets them via reflection after calling the no-arg constructor).
+- Domain entity classes must be non-`final` (Hibernate enhancement requires subclassability).
+- A protected no-arg constructor must exist alongside the public factory methods.
 
 ### Tech Stack
 

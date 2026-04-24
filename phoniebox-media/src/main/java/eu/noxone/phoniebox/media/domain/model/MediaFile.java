@@ -1,7 +1,9 @@
 package eu.noxone.phoniebox.media.domain.model;
 
+import eu.noxone.phoniebox.media.infrastructure.persistence.MediaFileIdConverter;
 import eu.noxone.phoniebox.shared.domain.DefaultDomainEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -19,9 +21,13 @@ import java.util.Objects;
  * a JPA entity ({@code @Entity}).  The JPA annotations are considered acceptable
  * in the domain layer because they are declarative metadata from the standard
  * Jakarta Persistence API — they carry no Quarkus or Hibernate-specific behaviour.
- * All attribute type conversion is handled by {@code @AttributeConverter} classes
- * in the infrastructure layer (with {@code autoApply = true}), so no
- * {@code @Convert} references appear here.
+ * Regular attribute type conversion is handled by {@code @AttributeConverter} classes
+ * in the infrastructure layer via {@code autoApply = true}.  The {@code @Id} field is
+ * an exception: the JPA specification prohibits {@code autoApply} converters from being
+ * applied to identifier attributes, so an explicit {@code @Convert} reference to
+ * {@link MediaFileIdConverter} is required here.  The architecture rule
+ * {@code domainDoesNotDependOnOtherLayers} allows this narrow exception for classes
+ * that are annotated with {@code @jakarta.persistence.Converter}.
  *
  * <p>Fields are non-final to allow Hibernate to populate them after constructing
  * the instance via the protected no-arg constructor.  The domain factory method
@@ -32,6 +38,7 @@ import java.util.Objects;
 public class MediaFile extends DefaultDomainEntity<MediaFileId> {
 
     @Id
+    @Convert(converter = MediaFileIdConverter.class)
     @Column(name = "id", nullable = false, updatable = false)
     private MediaFileId id;
 

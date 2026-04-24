@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>eu.noxone.phoniebox</groupId>
+        <artifactId>phoniebox-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>phoniebox-processor</artifactId>
+    <name>Phoniebox :: Processor</name>
+
+    <!--
+        No compile-scope dependencies — the processor uses only JDK annotation-processing
+        APIs and writes generated source as plain strings.
+
+        Test dependencies provide the types that generated code imports, so that the
+        in-process compilations run by the test can resolve them from the classpath.
+    -->
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Supplies DefaultDomainAttribute and ReflectiveDomainAttributeConverter
+             to the in-process test compilations. -->
+        <dependency>
+            <groupId>eu.noxone.phoniebox</groupId>
+            <artifactId>phoniebox-shared</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Supplies @Converter so generated converter sources compile cleanly. -->
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- Do not run annotation processors on the processor itself. -->
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <proc>none</proc>
+                </configuration>
+            </plugin>
+            <plugin>
+                <!-- Override parent Surefire config: JBoss LogManager is not on this
+                     module's classpath, so clear the property to avoid a warning. -->
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables combine.children="override">
+                        <maven.home>${maven.home}</maven.home>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

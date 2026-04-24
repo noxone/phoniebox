@@ -20,6 +20,13 @@
             <artifactId>phoniebox-shared</artifactId>
         </dependency>
 
+        <!-- Annotation processor — generates JPA converters at compile time; not included in the JAR -->
+        <dependency>
+            <groupId>eu.noxone.phoniebox</groupId>
+            <artifactId>phoniebox-processor</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- CDI (dependency injection) -->
         <dependency>
             <groupId>io.quarkus</groupId>
