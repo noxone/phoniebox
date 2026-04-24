@@ -1,6 +1,5 @@
 package eu.noxone.phoniebox.arch;
 
-import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
@@ -55,38 +54,17 @@ public final class OnionArchitectureRules {
 
     /**
      * Domain classes must not reference application, infrastructure or web classes.
-     *
-     * <p><strong>Exception:</strong> infrastructure classes annotated with
-     * {@link Converter @Converter} may be referenced from domain entity {@code @Id} fields
-     * via an explicit {@code @Convert} annotation.  The JPA specification prohibits
-     * {@code autoApply = true} converters from being applied to identifier attributes,
-     * so the converter class must be named directly on the {@code @Id} field.
      */
     public static ArchRule domainDoesNotDependOnOtherLayers(final String basePackage) {
         return noClasses()
                 .that().resideInAPackage(basePackage + ".domain..")
-                .should(new ArchCondition<JavaClass>(
-                        "not depend on application, infrastructure or web" +
-                        " (exception: @Converter-annotated classes for @Id field mapping)") {
-                    @Override
-                    public void check(final JavaClass javaClass, final ConditionEvents events) {
-                        javaClass.getDirectDependenciesFromSelf().forEach(dep -> {
-                            final JavaClass target = dep.getTargetClass();
-                            final String pkg = target.getPackageName();
-                            final boolean inForbiddenLayer =
-                                    pkg.startsWith(basePackage + ".application") ||
-                                    pkg.startsWith(basePackage + ".infrastructure") ||
-                                    pkg.startsWith(basePackage + ".web");
-                            if (inForbiddenLayer && !target.isAnnotatedWith("jakarta.persistence.Converter")) {
-                                events.add(SimpleConditionEvent.violated(javaClass, String.format(
-                                        "Domain class <%s> must not depend on <%s>",
-                                        javaClass.getName(), target.getName())));
-                            }
-                        });
-                    }
-                })
-                .as("Domain must not depend on application, infrastructure or web" +
-                    " (@Converter classes excepted for @Id field mapping)")
+                .should().dependOnClassesThat()
+                .resideInAnyPackage(
+                        basePackage + ".application..",
+                        basePackage + ".infrastructure..",
+                        basePackage + ".web.."
+                )
+                .as("Domain must not depend on application, infrastructure or web")
                 .allowEmptyShould(true);
     }
 
