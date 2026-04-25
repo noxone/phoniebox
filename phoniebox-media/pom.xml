@@ -20,6 +20,13 @@
             <artifactId>phoniebox-shared</artifactId>
         </dependency>
 
+        <!-- Audio metadata extraction (MP3, OGG, FLAC, WAV, …) -->
+        <dependency>
+            <groupId>net.jthink</groupId>
+            <artifactId>jaudiotagger</artifactId>
+            <version>2.2.5</version>
+        </dependency>
+
         <!-- Annotation processor — generates JPA converters at compile time; not included in the JAR -->
         <dependency>
             <groupId>eu.noxone.phoniebox</groupId>

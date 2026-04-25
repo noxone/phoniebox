@@ -5,6 +5,7 @@ import eu.noxone.phoniebox.media.application.port.in.GetMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.in.ListMediaFilesUseCase;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileCommand;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileUseCase;
+import eu.noxone.phoniebox.media.application.port.out.AudioMetadataExtractor;
 import eu.noxone.phoniebox.media.application.port.out.FileStoragePort;
 import eu.noxone.phoniebox.media.application.port.out.MediaFileRepository;
 import eu.noxone.phoniebox.media.domain.model.FileSize;
@@ -34,11 +35,15 @@ public class MediaFileApplicationService
 
     private final MediaFileRepository repository;
     private final FileStoragePort storage;
+    private final AudioMetadataExtractor audioMetadataExtractor;
 
     @Inject
-    public MediaFileApplicationService(final MediaFileRepository repository, final FileStoragePort storage) {
+    public MediaFileApplicationService(final MediaFileRepository repository,
+                                       final FileStoragePort storage,
+                                       final AudioMetadataExtractor audioMetadataExtractor) {
         this.repository = repository;
         this.storage = storage;
+        this.audioMetadataExtractor = audioMetadataExtractor;
     }
 
     @Override
@@ -52,6 +57,8 @@ public class MediaFileApplicationService
         final var mediaFile = MediaFile.create(metadata);
         // Store bytes first – if this fails the transaction rolls back and no orphan row is created
         storage.store(mediaFile.getId(), command.content());
+        audioMetadataExtractor.extract(storage.resolve(mediaFile.getId()))
+                .ifPresent(mediaFile::applyAudioMetadata);
         repository.save(mediaFile);
         return mediaFile;
     }

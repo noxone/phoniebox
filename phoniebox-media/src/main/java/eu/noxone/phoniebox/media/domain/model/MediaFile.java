@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Aggregate root representing an uploaded sound file.
@@ -42,6 +43,9 @@ public class MediaFile extends DefaultDomainEntity<MediaFileId> {
     @Column(name = "uploaded_at", nullable = false)
     private UploadedAt uploadedAt;
 
+    @Embedded
+    private AudioMetadata audioMetadata;
+
     /** Required by JPA. Not for use by application code. */
     protected MediaFile() {
     }
@@ -68,5 +72,15 @@ public class MediaFile extends DefaultDomainEntity<MediaFileId> {
 
     public UploadedAt getUploadedAt() {
         return uploadedAt;
+    }
+
+    /** Returns extracted audio metadata, or empty if extraction was not attempted or failed. */
+    public Optional<AudioMetadata> getAudioMetadata() {
+        return Optional.ofNullable(audioMetadata);
+    }
+
+    /** Stores audio metadata extracted after the file was persisted. */
+    public void applyAudioMetadata(final AudioMetadata audioMetadata) {
+        this.audioMetadata = audioMetadata;
     }
 }
