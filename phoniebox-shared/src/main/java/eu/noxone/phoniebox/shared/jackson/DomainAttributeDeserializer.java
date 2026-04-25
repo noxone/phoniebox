@@ -60,8 +60,7 @@ public class DomainAttributeDeserializer extends StdDeserializer<DefaultDomainAt
         this.factoryMethod = null;
     }
 
-    /** Specialised instance created by {@link #createContextual} for one concrete attribute type. */
-    @SuppressWarnings("unchecked")
+    /** Specialized instance created by {@link #createContextual} for one concrete attribute type. */
     private DomainAttributeDeserializer(final Class<? extends DefaultDomainAttribute<?>> attributeType) {
         super(attributeType);
         this.wrappedType = resolveWrappedType(attributeType);
@@ -81,7 +80,6 @@ public class DomainAttributeDeserializer extends StdDeserializer<DefaultDomainAt
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public DefaultDomainAttribute<?> deserialize(final JsonParser p,
                                                  final DeserializationContext ctxt) throws IOException {
         if (factoryMethod == null) {
