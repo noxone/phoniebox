@@ -37,7 +37,7 @@ public class JaudiotaggerAudioMetadataExtractor implements AudioMetadataExtracto
     @Override
     public Optional<AudioMetadata> extract(final Path filePath) {
         try {
-            final var audioFile = AudioFileIO.read(filePath.toFile());
+            final var audioFile = AudioFileIO.readMagic(filePath.toFile());
             final AudioHeader header = audioFile.getAudioHeader();
             final Tag tag = audioFile.getTag();
 
