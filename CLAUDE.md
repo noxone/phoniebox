@@ -15,7 +15,9 @@ mvn clean install -DskipTests
 mvn clean install -Pnative
 
 # Run backend in dev mode (hot reload, port 8080)
-cd phoniebox-app && mvn quarkus:dev
+# Always run a full install first so that annotation-processor-generated classes
+# (e.g. JPA converters) and Jandex indexes are present in the local Maven repo.
+mvn clean install -DskipTests && cd phoniebox-app && mvn quarkus:dev
 
 # Frontend only (dev server on port 5173)
 cd phoniebox-frontend && npm install && npm run dev

@@ -27,5 +27,20 @@
             <artifactId>jakarta.persistence-api</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- Jackson: needed to compile the generic DomainAttribute serializer/deserializer.
+             Provided because the actual implementation is supplied by the consuming module
+             (quarkus-rest-jackson or equivalent). -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Quarkus ObjectMapperCustomizer: allows the DomainAttribute Jackson module to be
+             auto-discovered as a CDI bean without any wiring in consuming modules. -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-jackson</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 </project>
