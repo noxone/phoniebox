@@ -53,4 +53,11 @@ class ArchitectureTest {
     void entityFieldsMustBeDomainAttributes() {
         OnionArchitectureRules.entityFieldsMustBeDomainAttributes().check(classes);
     }
+
+    // ── Web API contract rules ────────────────────────────────────────────────
+
+    @Test
+    void restEndpointsMustNotExposeDomainTypes() {
+        OnionArchitectureRules.restEndpointsMustNotExposeDomainTypes(BASE_PACKAGE).check(classes);
+    }
 }

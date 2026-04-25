@@ -1,6 +1,8 @@
 package eu.noxone.phoniebox.arch;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaField;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.lang.ConditionEvents;
@@ -10,6 +12,7 @@ import eu.noxone.phoniebox.shared.domain.DomainEntity;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 /**
@@ -149,6 +152,60 @@ public final class OnionArchitectureRules {
                 .allowEmptyShould(true);
     }
 
+    // ── Web API contract rules ────────────────────────────────────────────────
+
+    /**
+     * Public methods on JAX-RS resource classes (annotated with {@code @Path})
+     * must not use {@link DomainEntity} or {@link DomainAttribute} types directly
+     * as parameter or return types.
+     *
+     * <p>Domain types are internal model classes.  Exposing them directly in the
+     * HTTP API means that every internal model change automatically breaks the
+     * API contract — clients would see different field names, types, or structure
+     * without any deliberate versioning decision.  The web layer must map domain
+     * objects to dedicated DTO/response types before returning them, and must
+     * accept plain Java types (e.g. {@code UUID}, {@code String}) as parameters.
+     *
+     * <p>Jackson serializers, DTO factory methods (e.g. {@code from(DomainType)}),
+     * and other web-layer infrastructure are intentionally excluded — only
+     * {@code @Path}-annotated resource classes are checked.
+     *
+     * <p>Note: generic type arguments (e.g. the {@code T} in {@code List<T>}) are
+     * not inspected — only the raw declared types are checked.
+     */
+    public static ArchRule restEndpointsMustNotExposeDomainTypes(final String basePackage) {
+        return methods()
+                .that().areDeclaredInClassesThat()
+                    .resideInAPackage(basePackage + ".web..")
+                    .and().areAnnotatedWith("jakarta.ws.rs.Path")
+                .and().arePublic()
+                .should(new ArchCondition<JavaMethod>(
+                        "not use DomainEntity or DomainAttribute as parameter or return type") {
+                    @Override
+                    public void check(final JavaMethod method, final ConditionEvents events) {
+                        checkType(method, method.getRawReturnType(), "return type", events);
+                        method.getRawParameterTypes().forEach(paramType ->
+                                checkType(method, paramType, "parameter type", events));
+                    }
+
+                    private void checkType(final JavaMethod method, final JavaClass type,
+                                           final String role, final ConditionEvents events) {
+                        if (type.isAssignableTo(DomainEntity.class)
+                                || type.isAssignableTo(DomainAttribute.class)) {
+                            events.add(SimpleConditionEvent.violated(method, String.format(
+                                    "Method [%s.%s] must not use domain type [%s] as %s"
+                                    + " — map it to a dedicated DTO instead",
+                                    method.getOwner().getSimpleName(),
+                                    method.getName(),
+                                    type.getSimpleName(),
+                                    role)));
+                        }
+                    }
+                })
+                .as("REST endpoints must not expose DomainEntity or DomainAttribute in their API contract")
+                .allowEmptyShould(true);
+    }
+
     // ── Convenience ──────────────────────────────────────────────────────────
 
     /**
@@ -162,6 +219,7 @@ public final class OnionArchitectureRules {
                 webDoesNotDependOnInfrastructure(basePackage),
                 domainModelClassesMustBeEntityOrAttribute(basePackage),
                 entityFieldsMustBeDomainAttributes(),
+                restEndpointsMustNotExposeDomainTypes(basePackage),
         };
     }
 }
