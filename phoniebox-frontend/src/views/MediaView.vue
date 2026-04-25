@@ -2,9 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { listMediaFiles, uploadMediaFile, deleteMediaFile, type MediaFile } from '@/api/media'
 
-const files   = ref<MediaFile[]>([])
-const loading = ref(false)
-const error   = ref<string | null>(null)
+const files    = ref<MediaFile[]>([])
+const loading  = ref(false)
+const error    = ref<string | null>(null)
 const uploading = ref(false)
 
 async function load() {
@@ -55,6 +55,18 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleString()
 }
 
+function formatDuration(seconds: number | null): string {
+  if (seconds == null) return '—'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function displayAlbum(file: MediaFile): string {
+  if (!file.trackAlbum) return '—'
+  return file.trackYear ? `${file.trackAlbum} (${file.trackYear})` : file.trackAlbum
+}
+
 onMounted(load)
 </script>
 
@@ -85,9 +97,12 @@ onMounted(load)
     <table v-else class="w-full text-sm">
       <thead>
         <tr class="border-b border-gray-800 text-gray-400 text-left">
-          <th class="pb-2 pr-4 font-medium">File name</th>
-          <th class="pb-2 pr-4 font-medium">Type</th>
-          <th class="pb-2 pr-4 font-medium">Size</th>
+          <th class="pb-2 pr-4 font-medium">Title</th>
+          <th class="pb-2 pr-4 font-medium">Artist</th>
+          <th class="pb-2 pr-4 font-medium">Album</th>
+          <th class="pb-2 pr-4 font-medium">Genre</th>
+          <th class="pb-2 pr-4 font-medium text-right">Duration</th>
+          <th class="pb-2 pr-4 font-medium text-right">Size</th>
           <th class="pb-2 pr-4 font-medium">Uploaded</th>
           <th class="pb-2 font-medium"></th>
         </tr>
@@ -98,12 +113,34 @@ onMounted(load)
           :key="file.id"
           class="border-b border-gray-800/60 hover:bg-gray-800/30 transition-colors"
         >
-          <td class="py-3 pr-4 font-mono text-gray-200 truncate max-w-xs">
-            {{ file.originalFileName }}
+          <!-- Title: tag title preferred; filename as fallback -->
+          <td class="py-3 pr-4 max-w-xs">
+            <div class="font-medium text-gray-200 truncate">
+              {{ file.trackTitle ?? file.originalFileName }}
+            </div>
+            <div v-if="file.trackTitle" class="text-xs text-gray-500 truncate font-mono">
+              {{ file.originalFileName }}
+            </div>
           </td>
-          <td class="py-3 pr-4 text-gray-400">{{ file.mimeType }}</td>
-          <td class="py-3 pr-4 text-gray-400 whitespace-nowrap">{{ formatBytes(file.sizeInBytes) }}</td>
-          <td class="py-3 pr-4 text-gray-400 whitespace-nowrap">{{ formatDate(file.uploadedAt) }}</td>
+
+          <td class="py-3 pr-4 text-gray-400">{{ file.trackArtist ?? '—' }}</td>
+
+          <td class="py-3 pr-4 text-gray-400">{{ displayAlbum(file) }}</td>
+
+          <td class="py-3 pr-4 text-gray-400">{{ file.trackGenre ?? '—' }}</td>
+
+          <td class="py-3 pr-4 text-gray-400 text-right whitespace-nowrap">
+            {{ formatDuration(file.durationSeconds) }}
+          </td>
+
+          <td class="py-3 pr-4 text-gray-400 text-right whitespace-nowrap">
+            {{ formatBytes(file.sizeInBytes) }}
+          </td>
+
+          <td class="py-3 pr-4 text-gray-400 whitespace-nowrap">
+            {{ formatDate(file.uploadedAt) }}
+          </td>
+
           <td class="py-3">
             <button
               class="text-red-400 hover:text-red-300 transition-colors text-xs"

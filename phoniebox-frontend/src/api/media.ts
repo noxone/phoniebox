@@ -6,6 +6,16 @@ export interface MediaFile {
   mimeType: string
   sizeInBytes: number
   uploadedAt: string  // ISO-8601
+  // audio metadata — null when extraction failed or file has no tags
+  durationSeconds: number | null
+  bitrateKbps: number | null
+  sampleRateHz: number | null
+  trackTitle: string | null
+  trackArtist: string | null
+  trackAlbum: string | null
+  trackNumber: number | null
+  trackYear: number | null
+  trackGenre: string | null
 }
 
 export async function listMediaFiles(): Promise<MediaFile[]> {

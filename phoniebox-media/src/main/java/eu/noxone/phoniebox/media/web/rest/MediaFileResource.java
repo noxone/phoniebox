@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -78,12 +79,12 @@ public class MediaFileResource {
     @Consumes(MediaType.MULTIPART_FORM_DATA)
     public Response upload(
             @RestForm("file") final FileUpload file) {
-        try {
+        try(var content = new BufferedInputStream(Files.newInputStream(file.filePath()))) {
             final var command = new UploadMediaFileCommand(
                     file.fileName(),
                     resolveMimeType(file),
                     Files.size(file.filePath()),
-                    Files.newInputStream(file.filePath())
+                    content
             );
             final var uploaded = uploadUseCase.upload(command);
             return Response.status(Response.Status.CREATED)
