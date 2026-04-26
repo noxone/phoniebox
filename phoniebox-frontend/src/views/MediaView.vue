@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { listMediaFiles, uploadMediaFile, deleteMediaFile, type MediaFile } from '@/api/media'
+import { ref, reactive, onMounted } from 'vue'
+import { listMediaFiles, uploadMediaFile, updateMediaFileTags, deleteMediaFile, type MediaFile, type UpdateTagsPayload } from '@/api/media'
 
 const files    = ref<MediaFile[]>([])
 const loading  = ref(false)
 const error    = ref<string | null>(null)
 const uploading = ref(false)
+
+// Edit modal state
+const editing  = ref<MediaFile | null>(null)
+const editForm = reactive<UpdateTagsPayload>({ trackTitle: null, trackArtist: null, trackAlbum: null, trackGenre: null })
+const saving   = ref(false)
 
 async function load() {
   loading.value = true
@@ -32,6 +37,34 @@ async function onFileSelected(event: Event) {
   } finally {
     uploading.value = false
     input.value = ''
+  }
+}
+
+function openEdit(file: MediaFile) {
+  editing.value = file
+  editForm.trackTitle  = file.trackTitle
+  editForm.trackArtist = file.trackArtist
+  editForm.trackAlbum  = file.trackAlbum
+  editForm.trackGenre  = file.trackGenre
+}
+
+function closeEdit() {
+  editing.value = null
+}
+
+async function saveEdit() {
+  if (!editing.value) return
+  saving.value = true
+  error.value  = null
+  try {
+    const updated = await updateMediaFileTags(editing.value.id, { ...editForm })
+    const idx = files.value.findIndex(f => f.id === updated.id)
+    if (idx !== -1) files.value[idx] = updated
+    closeEdit()
+  } catch (e) {
+    error.value = String(e)
+  } finally {
+    saving.value = false
   }
 }
 
@@ -138,10 +171,19 @@ onMounted(load)
           </td>
 
           <td class="py-3 pr-4 text-gray-400 whitespace-nowrap">
-            {{ formatDate(file.uploadedAt) }}
+            <div>{{ formatDate(file.uploadedAt) }}</div>
+            <div v-if="file.updatedAt !== file.uploadedAt" class="text-xs text-gray-500">
+              edited {{ formatDate(file.updatedAt) }}
+            </div>
           </td>
 
-          <td class="py-3">
+          <td class="py-3 whitespace-nowrap">
+            <button
+              class="text-indigo-400 hover:text-indigo-300 transition-colors text-xs mr-3"
+              @click="openEdit(file)"
+            >
+              Edit
+            </button>
             <button
               class="text-red-400 hover:text-red-300 transition-colors text-xs"
               @click="remove(file.id)"
@@ -152,5 +194,80 @@ onMounted(load)
         </tr>
       </tbody>
     </table>
+
+    <!-- Edit modal -->
+    <Teleport to="body">
+      <div
+        v-if="editing"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+        @click.self="closeEdit"
+      >
+        <div class="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-md shadow-2xl">
+          <h3 class="text-lg font-semibold mb-1">Edit tags</h3>
+          <p class="text-xs text-gray-500 mb-5 font-mono truncate">{{ editing.originalFileName }}</p>
+
+          <div class="space-y-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Title</label>
+              <input
+                v-model="editForm.trackTitle"
+                type="text"
+                placeholder="Track title"
+                class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-100
+                       placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Artist</label>
+              <input
+                v-model="editForm.trackArtist"
+                type="text"
+                placeholder="Artist name"
+                class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-100
+                       placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Album</label>
+              <input
+                v-model="editForm.trackAlbum"
+                type="text"
+                placeholder="Album title"
+                class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-100
+                       placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Genre</label>
+              <input
+                v-model="editForm.trackGenre"
+                type="text"
+                placeholder="Genre"
+                class="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-100
+                       placeholder-gray-600 focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 mt-6">
+            <button
+              class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-gray-200 transition-colors"
+              :disabled="saving"
+              @click="closeEdit"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-4 py-2 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-500
+                     transition-colors disabled:opacity-60"
+              :disabled="saving"
+              @click="saveEdit"
+            >
+              {{ saving ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

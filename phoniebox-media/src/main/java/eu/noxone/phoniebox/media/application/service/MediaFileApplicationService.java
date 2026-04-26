@@ -3,6 +3,8 @@ package eu.noxone.phoniebox.media.application.service;
 import eu.noxone.phoniebox.media.application.port.in.DeleteMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.in.GetMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.in.ListMediaFilesUseCase;
+import eu.noxone.phoniebox.media.application.port.in.UpdateTagsCommand;
+import eu.noxone.phoniebox.media.application.port.in.UpdateTagsUseCase;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileCommand;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.out.AudioMetadataExtractor;
@@ -14,6 +16,10 @@ import eu.noxone.phoniebox.media.domain.model.MediaFileId;
 import eu.noxone.phoniebox.media.domain.model.MediaFileMetadata;
 import eu.noxone.phoniebox.media.domain.model.MimeType;
 import eu.noxone.phoniebox.media.domain.model.OriginalFileName;
+import eu.noxone.phoniebox.media.domain.model.TrackAlbum;
+import eu.noxone.phoniebox.media.domain.model.TrackArtist;
+import eu.noxone.phoniebox.media.domain.model.TrackGenre;
+import eu.noxone.phoniebox.media.domain.model.TrackTitle;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -31,7 +37,7 @@ import java.util.UUID;
  */
 @ApplicationScoped
 public class MediaFileApplicationService
-        implements UploadMediaFileUseCase, GetMediaFileUseCase, ListMediaFilesUseCase, DeleteMediaFileUseCase {
+        implements UploadMediaFileUseCase, GetMediaFileUseCase, ListMediaFilesUseCase, DeleteMediaFileUseCase, UpdateTagsUseCase {
 
     private final MediaFileRepository repository;
     private final FileStoragePort storage;
@@ -71,6 +77,21 @@ public class MediaFileApplicationService
     @Override
     public List<MediaFile> listAll() {
         return repository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Optional<MediaFile> updateTags(final UpdateTagsCommand command) {
+        return repository.findById(MediaFileId.of(command.id()))
+                .map(file -> {
+                    file.updateTagMetadata(
+                            command.title()  != null ? TrackTitle.of(command.title())   : null,
+                            command.artist() != null ? TrackArtist.of(command.artist()) : null,
+                            command.album()  != null ? TrackAlbum.of(command.album())   : null,
+                            command.genre()  != null ? TrackGenre.of(command.genre())   : null
+                    );
+                    return file;
+                });
     }
 
     @Override

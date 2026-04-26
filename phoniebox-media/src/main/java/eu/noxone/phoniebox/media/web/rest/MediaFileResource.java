@@ -3,12 +3,15 @@ package eu.noxone.phoniebox.media.web.rest;
 import eu.noxone.phoniebox.media.application.port.in.DeleteMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.in.GetMediaFileUseCase;
 import eu.noxone.phoniebox.media.application.port.in.ListMediaFilesUseCase;
+import eu.noxone.phoniebox.media.application.port.in.UpdateTagsCommand;
+import eu.noxone.phoniebox.media.application.port.in.UpdateTagsUseCase;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileCommand;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileUseCase;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
@@ -32,6 +35,7 @@ import java.util.UUID;
  * GET    /api/media          → list all files
  * GET    /api/media/{id}     → get one file by UUID
  * POST   /api/media          → upload a new file (multipart/form-data)
+ * PATCH  /api/media/{id}     → update editable tag metadata (title, artist, album, genre)
  * DELETE /api/media/{id}     → delete a file
  * </pre>
  *
@@ -45,6 +49,7 @@ public class MediaFileResource {
     private final UploadMediaFileUseCase uploadUseCase;
     private final GetMediaFileUseCase getUseCase;
     private final ListMediaFilesUseCase listUseCase;
+    private final UpdateTagsUseCase updateTagsUseCase;
     private final DeleteMediaFileUseCase deleteUseCase;
 
     @Inject
@@ -52,10 +57,12 @@ public class MediaFileResource {
             final UploadMediaFileUseCase uploadUseCase,
             final GetMediaFileUseCase getUseCase,
             final ListMediaFilesUseCase listUseCase,
+            final UpdateTagsUseCase updateTagsUseCase,
             final DeleteMediaFileUseCase deleteUseCase) {
         this.uploadUseCase = uploadUseCase;
         this.getUseCase = getUseCase;
         this.listUseCase = listUseCase;
+        this.updateTagsUseCase = updateTagsUseCase;
         this.deleteUseCase = deleteUseCase;
     }
 
@@ -93,6 +100,23 @@ public class MediaFileResource {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to read uploaded file", e);
         }
+    }
+
+    @PATCH
+    @Path("/{id}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response updateTags(@PathParam("id") final UUID id, final UpdateTagsRequest request) {
+        final var command = new UpdateTagsCommand(
+                id,
+                request.trackTitle(),
+                request.trackArtist(),
+                request.trackAlbum(),
+                request.trackGenre()
+        );
+        return updateTagsUseCase.updateTags(command)
+                .map(MediaFileResponse::from)
+                .map(dto -> Response.ok(dto).build())
+                .orElse(Response.status(Response.Status.NOT_FOUND).build());
     }
 
     @DELETE

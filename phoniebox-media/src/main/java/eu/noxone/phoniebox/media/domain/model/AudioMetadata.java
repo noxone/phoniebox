@@ -85,6 +85,12 @@ public class AudioMetadata implements DomainAttribute {
     public TrackYear getYear()               { return year; }
     public TrackGenre getGenre()             { return genre; }
 
+    /** Returns a new instance with updated tag fields; technical fields (duration, bitrate, sample rate, track number, year) are preserved. */
+    public AudioMetadata withTags(final TrackTitle title, final TrackArtist artist, final TrackAlbum album, final TrackGenre genre) {
+        return new AudioMetadata(this.duration, this.bitrate, this.sampleRate,
+                title, artist, album, this.trackNumber, this.year, genre);
+    }
+
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
