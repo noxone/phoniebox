@@ -7,17 +7,23 @@ import eu.noxone.phoniebox.media.application.port.in.UpdateTagsCommand;
 import eu.noxone.phoniebox.media.application.port.in.UpdateTagsUseCase;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileCommand;
 import eu.noxone.phoniebox.media.application.port.in.UploadMediaFileUseCase;
+import eu.noxone.phoniebox.shared.paging.PageRequest;
+import eu.noxone.phoniebox.shared.web.PagingResponseBuilder;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import org.jboss.resteasy.reactive.RestForm;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 
@@ -25,14 +31,13 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.UUID;
 
 /**
  * REST resource for the media-file management API.
  *
  * <pre>
- * GET    /api/media          → list all files
+ * GET    /api/media          → list files (paged; ?page=0&amp;size=1000)
  * GET    /api/media/{id}     → get one file by UUID
  * POST   /api/media          → upload a new file (multipart/form-data)
  * PATCH  /api/media/{id}     → update editable tag metadata (title, artist, album, genre)
@@ -67,10 +72,12 @@ public class MediaFileResource {
     }
 
     @GET
-    public List<MediaFileResponse> listAll() {
-        return listUseCase.listAll().stream()
-                .map(MediaFileResponse::from)
-                .toList();
+    public Response listAll(
+            @QueryParam("page") @DefaultValue("0") final int page,
+            @QueryParam("size") @DefaultValue("1000") final int size,
+            @Context final UriInfo uriInfo) {
+        final var paged = listUseCase.list(PageRequest.of(page, size)).map(MediaFileResponse::from);
+        return PagingResponseBuilder.of(paged, uriInfo).build();
     }
 
     @GET

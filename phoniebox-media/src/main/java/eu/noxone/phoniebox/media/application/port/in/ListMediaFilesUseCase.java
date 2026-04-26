@@ -1,11 +1,11 @@
 package eu.noxone.phoniebox.media.application.port.in;
 
 import eu.noxone.phoniebox.media.domain.model.MediaFile;
+import eu.noxone.phoniebox.shared.paging.PageRequest;
+import eu.noxone.phoniebox.shared.paging.PageResponse;
 
-import java.util.List;
-
-/** Primary port: return all stored media files. */
+/** Primary port: return a page of stored media files. */
 public interface ListMediaFilesUseCase {
 
-    List<MediaFile> listAll();
+    PageResponse<MediaFile> list(PageRequest pageRequest);
 }

@@ -6,6 +6,7 @@ import eu.noxone.phoniebox.media.domain.model.MediaFile;
 import eu.noxone.phoniebox.media.domain.model.MediaFileMetadata;
 import eu.noxone.phoniebox.media.domain.model.MimeType;
 import eu.noxone.phoniebox.media.domain.model.OriginalFileName;
+import eu.noxone.phoniebox.shared.paging.PageResponse;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
@@ -52,27 +53,50 @@ class MediaFileResourceTest {
 
     @Test
     void listAll_returns200_withEmptyArray_whenNoFiles() {
-        when(service.listAll()).thenReturn(List.of());
+        when(service.list(any())).thenReturn(new PageResponse<>(List.of(), 0, 1000, 0));
 
         given()
                 .when().get("/api/media")
                 .then()
                 .statusCode(200)
+                .header("X-Total-Count", "0")
+                .header("X-Page", "0")
+                .header("X-Page-Size", "1000")
+                .header("X-Total-Pages", "0")
                 .body("$", empty());
     }
 
     @Test
     void listAll_returns200_withAllFiles() {
-        when(service.listAll()).thenReturn(List.of(sampleFile(), sampleFile()));
+        final var files = List.of(sampleFile(), sampleFile());
+        when(service.list(any())).thenReturn(new PageResponse<>(files, 0, 1000, 2));
 
         given()
                 .when().get("/api/media")
                 .then()
                 .statusCode(200)
+                .header("X-Total-Count", "2")
+                .header("X-Page", "0")
+                .header("X-Page-Size", "1000")
+                .header("X-Total-Pages", "1")
                 .body("$", hasSize(2))
                 .body("[0].originalFileName", equalTo("song.mp3"))
                 .body("[0].mimeType", equalTo("audio/mpeg"))
                 .body("[0].sizeInBytes", equalTo(2048));
+    }
+
+    @Test
+    void listAll_includesNextLink_whenMorePagesExist() {
+        final var files = List.of(sampleFile());
+        when(service.list(any())).thenReturn(new PageResponse<>(files, 0, 1, 3));
+
+        given()
+                .when().get("/api/media?page=0&size=1")
+                .then()
+                .statusCode(200)
+                .header("X-Total-Count", "3")
+                .header("X-Total-Pages", "3")
+                .header("Link", org.hamcrest.Matchers.containsString("rel=\"next\""));
     }
 
     // ── GET /api/media/{id} ───────────────────────────────────────────────────

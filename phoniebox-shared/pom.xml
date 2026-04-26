@@ -42,5 +42,19 @@
             <artifactId>quarkus-jackson</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- JAX-RS API: needed to compile PagingResponseBuilder (UriInfo, Response).
+             Provided because the actual implementation is supplied by quarkus-rest. -->
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- ──────────── Test dependencies ──────────── -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

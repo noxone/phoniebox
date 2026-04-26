@@ -24,7 +24,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import java.util.List;
+import eu.noxone.phoniebox.shared.paging.PageRequest;
+import eu.noxone.phoniebox.shared.paging.PageResponse;
+
 import java.util.Optional;
 import java.util.UUID;
 
@@ -75,8 +77,8 @@ public class MediaFileApplicationService
     }
 
     @Override
-    public List<MediaFile> listAll() {
-        return repository.findAll();
+    public PageResponse<MediaFile> list(final PageRequest pageRequest) {
+        return repository.findAll(pageRequest);
     }
 
     @Override

@@ -3,10 +3,12 @@ package eu.noxone.phoniebox.media.infrastructure.persistence;
 import eu.noxone.phoniebox.media.application.port.out.MediaFileRepository;
 import eu.noxone.phoniebox.media.domain.model.MediaFile;
 import eu.noxone.phoniebox.media.domain.model.MediaFileId;
+import eu.noxone.phoniebox.shared.paging.PageRequest;
+import eu.noxone.phoniebox.shared.paging.PageResponse;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -44,8 +46,11 @@ public class MediaFileRepositoryAdapter implements MediaFileRepository {
     }
 
     @Override
-    public List<MediaFile> findAll() {
-        return panache.listAll();
+    public PageResponse<MediaFile> findAll(final PageRequest pageRequest) {
+        PanacheQuery<MediaFile> query = panache.findAll();
+        long total = query.count();
+        var content = query.page(pageRequest.page(), pageRequest.size()).list();
+        return new PageResponse<>(content, pageRequest.page(), pageRequest.size(), total);
     }
 
     @Override
