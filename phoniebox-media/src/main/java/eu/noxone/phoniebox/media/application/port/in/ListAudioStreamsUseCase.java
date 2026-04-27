@@ -6,5 +6,5 @@ import eu.noxone.phoniebox.shared.paging.PageResponse;
 
 public interface ListAudioStreamsUseCase {
 
-    PageResponse<AudioStream> list(PageRequest pageRequest);
+  PageResponse<AudioStream> list(PageRequest pageRequest);
 }

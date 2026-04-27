@@ -1,88 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>eu.noxone.phoniebox</groupId>
-        <artifactId>phoniebox-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
+  <parent>
+    <groupId>eu.noxone.phoniebox</groupId>
+    <artifactId>phoniebox-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
 
-    <artifactId>phoniebox-app</artifactId>
-    <name>Phoniebox :: Application</name>
+  <artifactId>phoniebox-app</artifactId>
+  <name>Phoniebox :: Application</name>
 
-    <!-- This is the Quarkus runner module.
+  <!-- This is the Quarkus runner module.
          It assembles all feature modules, wires up the runtime extensions
          (SQLite JDBC, Flyway, …) and is the only module that can be executed. -->
 
-    <dependencies>
-        <!-- Feature modules -->
-        <dependency>
-            <groupId>eu.noxone.phoniebox</groupId>
-            <artifactId>phoniebox-media</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>eu.noxone.phoniebox</groupId>
-            <artifactId>phoniebox-audio</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>eu.noxone.phoniebox</groupId>
-            <artifactId>phoniebox-gpio</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>eu.noxone.phoniebox</groupId>
-            <artifactId>phoniebox-playlist</artifactId>
-        </dependency>
+  <dependencies>
+    <!-- Feature modules -->
+    <dependency>
+      <groupId>eu.noxone.phoniebox</groupId>
+      <artifactId>phoniebox-media</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>eu.noxone.phoniebox</groupId>
+      <artifactId>phoniebox-audio</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>eu.noxone.phoniebox</groupId>
+      <artifactId>phoniebox-gpio</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>eu.noxone.phoniebox</groupId>
+      <artifactId>phoniebox-playlist</artifactId>
+    </dependency>
 
-        <!-- SQLite JDBC (Quarkiverse – not in the main Quarkus BOM) -->
-        <dependency>
-            <groupId>io.quarkiverse.jdbc</groupId>
-            <artifactId>quarkus-jdbc-sqlite</artifactId>
-        </dependency>
+    <!-- SQLite JDBC (Quarkiverse – not in the main Quarkus BOM) -->
+    <dependency>
+      <groupId>io.quarkiverse.jdbc</groupId>
+      <artifactId>quarkus-jdbc-sqlite</artifactId>
+    </dependency>
 
-        <!-- Database migrations -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-flyway</artifactId>
-        </dependency>
+    <!-- Database migrations -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-flyway</artifactId>
+    </dependency>
 
-        <!-- Serve the built frontend SPA -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-vertx-http</artifactId>
-        </dependency>
+    <!-- Serve the built frontend SPA -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-vertx-http</artifactId>
+    </dependency>
 
-        <!-- Tests -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <!-- Tests -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.rest-assured</groupId>
+      <artifactId>rest-assured</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>${quarkus.platform.group-id}</groupId>
-                <artifactId>quarkus-maven-plugin</artifactId>
-                <extensions>true</extensions>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>build</goal>
-                            <goal>generate-code</goal>
-                            <goal>generate-code-tests</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>${quarkus.platform.group-id}</groupId>
+        <artifactId>quarkus-maven-plugin</artifactId>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <goals>
+              <goal>build</goal>
+              <goal>generate-code</goal>
+              <goal>generate-code-tests</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>

@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>eu.noxone.phoniebox</groupId>
-        <artifactId>phoniebox-parent</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
+  <parent>
+    <groupId>eu.noxone.phoniebox</groupId>
+    <artifactId>phoniebox-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
 
-    <artifactId>phoniebox-shared</artifactId>
-    <name>Phoniebox :: Shared</name>
+  <artifactId>phoniebox-shared</artifactId>
+  <name>Phoniebox :: Shared</name>
 
-    <!--
+  <!--
         Shared domain primitives and infrastructure helpers.
         The only external dependency is the Jakarta Persistence API, which is
         used solely for the DomainAttributeConverter base class.  It is declared
@@ -21,40 +19,40 @@
         the actual implementation (Hibernate) is provided by the application module.
     -->
 
-    <dependencies>
-        <dependency>
-            <groupId>jakarta.persistence</groupId>
-            <artifactId>jakarta.persistence-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Jackson: needed to compile the generic DomainAttribute serializer/deserializer.
+  <dependencies>
+    <dependency>
+      <groupId>jakarta.persistence</groupId>
+      <artifactId>jakarta.persistence-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Jackson: needed to compile the generic DomainAttribute serializer/deserializer.
              Provided because the actual implementation is supplied by the consuming module
              (quarkus-rest-jackson or equivalent). -->
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <!-- Quarkus ObjectMapperCustomizer: allows the DomainAttribute Jackson module to be
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- Quarkus ObjectMapperCustomizer: allows the DomainAttribute Jackson module to be
              auto-discovered as a CDI bean without any wiring in consuming modules. -->
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-jackson</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <!-- JAX-RS API: needed to compile PagingResponseBuilder (UriInfo, Response).
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jackson</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <!-- JAX-RS API: needed to compile PagingResponseBuilder (UriInfo, Response).
              Provided because the actual implementation is supplied by quarkus-rest. -->
-        <dependency>
-            <groupId>jakarta.ws.rs</groupId>
-            <artifactId>jakarta.ws.rs-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
+    <dependency>
+      <groupId>jakarta.ws.rs</groupId>
+      <artifactId>jakarta.ws.rs-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
 
-        <!-- ──────────── Test dependencies ──────────── -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+    <!-- ──────────── Test dependencies ──────────── -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 </project>

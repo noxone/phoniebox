@@ -5,5 +5,5 @@ import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFile;
 /** Primary port: store a new media file and return its persisted representation. */
 public interface UploadMediaFileUseCase {
 
-    MediaFile upload(UploadMediaFileCommand command);
+  MediaFile upload(UploadMediaFileCommand command);
 }

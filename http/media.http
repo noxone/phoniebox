@@ -1,0 +1,49 @@
+# Media File API
+# Requires the REST Client extension for VS Code (humao.rest-client).
+# Run the Quarkus backend first: cd phoniebox-app && mvn quarkus:dev
+
+@baseUrl = http://localhost:8080/api/media
+
+# ── List all media files ──────────────────────────────────────────────────────
+
+### List all media files
+GET {{baseUrl}}
+Accept: application/json
+
+# ── Upload a file ─────────────────────────────────────────────────────────────
+# Replace the path after < with a local audio file.
+# The @name directive captures the response so the uploaded ID can be reused below.
+
+### Upload a media file
+# @name upload
+POST {{baseUrl}}
+Content-Type: multipart/form-data; boundary=----Boundary
+
+------Boundary
+Content-Disposition: form-data; name="file"; filename="song.mp3"
+Content-Type: audio/mpeg
+
+< ./song.mp3
+------Boundary--
+
+# ── Work with a specific file ─────────────────────────────────────────────────
+# Option A: paste any known UUID here.
+# Option B: use the ID from the upload response above (requires @name upload above).
+
+@uploadedId = {{upload.response.body.$.id}}
+
+### Get a specific media file  (by uploaded ID)
+GET {{baseUrl}}/{{uploadedId}}
+Accept: application/json
+
+### Get a specific media file  (by hard-coded UUID)
+GET {{baseUrl}}/00000000-0000-0000-0000-000000000001
+Accept: application/json
+
+# ── Delete a file ─────────────────────────────────────────────────────────────
+
+### Delete the uploaded file
+DELETE {{baseUrl}}/{{uploadedId}}
+
+### Delete by hard-coded UUID
+DELETE {{baseUrl}}/00000000-0000-0000-0000-000000000001

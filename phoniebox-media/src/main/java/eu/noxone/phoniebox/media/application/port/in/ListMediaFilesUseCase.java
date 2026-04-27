@@ -7,5 +7,5 @@ import eu.noxone.phoniebox.shared.paging.PageResponse;
 /** Primary port: return a page of stored media files. */
 public interface ListMediaFilesUseCase {
 
-    PageResponse<MediaFile> list(PageRequest pageRequest);
+  PageResponse<MediaFile> list(PageRequest pageRequest);
 }

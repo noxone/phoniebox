@@ -16,45 +16,48 @@ import eu.noxone.phoniebox.shared.paging.PageResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-
 import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
 public class AudioStreamApplicationService
-        implements AddAudioStreamUseCase, ListAudioStreamsUseCase, GetAudioStreamUseCase, DeleteAudioStreamUseCase {
+    implements AddAudioStreamUseCase,
+        ListAudioStreamsUseCase,
+        GetAudioStreamUseCase,
+        DeleteAudioStreamUseCase {
 
-    private final AudioStreamRepository repository;
+  private final AudioStreamRepository repository;
 
-    @Inject
-    public AudioStreamApplicationService(final AudioStreamRepository repository) {
-        this.repository = repository;
-    }
+  @Inject
+  public AudioStreamApplicationService(final AudioStreamRepository repository) {
+    this.repository = repository;
+  }
 
-    @Override
-    @Transactional
-    public AudioStream add(final AddAudioStreamCommand command) {
-        AudioStream stream = AudioStream.create(
-                StreamName.of(command.name()),
-                StreamUrl.of(command.url()),
-                MimeType.of(command.mimeType()));
-        repository.save(stream);
-        return stream;
-    }
+  @Override
+  @Transactional
+  public AudioStream add(final AddAudioStreamCommand command) {
+    AudioStream stream =
+        AudioStream.create(
+            StreamName.of(command.name()),
+            StreamUrl.of(command.url()),
+            MimeType.of(command.mimeType()));
+    repository.save(stream);
+    return stream;
+  }
 
-    @Override
-    public PageResponse<AudioStream> list(final PageRequest pageRequest) {
-        return repository.findAll(pageRequest);
-    }
+  @Override
+  public PageResponse<AudioStream> list(final PageRequest pageRequest) {
+    return repository.findAll(pageRequest);
+  }
 
-    @Override
-    public Optional<AudioStream> get(final UUID id) {
-        return repository.findById(AudioStreamId.of(id));
-    }
+  @Override
+  public Optional<AudioStream> get(final UUID id) {
+    return repository.findById(AudioStreamId.of(id));
+  }
 
-    @Override
-    @Transactional
-    public boolean delete(final UUID id) {
-        return repository.deleteById(AudioStreamId.of(id));
-    }
+  @Override
+  @Transactional
+  public boolean delete(final UUID id) {
+    return repository.deleteById(AudioStreamId.of(id));
+  }
 }

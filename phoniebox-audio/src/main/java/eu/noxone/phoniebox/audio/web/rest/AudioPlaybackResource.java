@@ -8,7 +8,6 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
-
 import java.util.UUID;
 
 /**
@@ -29,45 +28,47 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 public class AudioPlaybackResource {
 
-    private final PlaybackControlUseCase control;
+  private final PlaybackControlUseCase control;
 
-    @Inject
-    public AudioPlaybackResource(final PlaybackControlUseCase control) {
-        this.control = control;
-    }
+  @Inject
+  public AudioPlaybackResource(final PlaybackControlUseCase control) {
+    this.control = control;
+  }
 
-    @GET
-    public PlaybackStateResponse getState() {
-        return PlaybackStateResponse.from(control.getState());
-    }
+  @GET
+  public PlaybackStateResponse getState() {
+    return PlaybackStateResponse.from(control.getState());
+  }
 
-    @POST
-    @Path("/track/{kind}/{id}")
-    public PlaybackStateResponse setTrack(@PathParam("kind") final String kind, @PathParam("id") final UUID id) {
-        return PlaybackStateResponse.from(control.setTrack(kind, id));
-    }
+  @POST
+  @Path("/track/{kind}/{id}")
+  public PlaybackStateResponse setTrack(
+      @PathParam("kind") final String kind, @PathParam("id") final UUID id) {
+    return PlaybackStateResponse.from(control.setTrack(kind, id));
+  }
 
-    @POST
-    @Path("/play")
-    public PlaybackStateResponse play() {
-        return PlaybackStateResponse.from(control.play());
-    }
+  @POST
+  @Path("/play")
+  public PlaybackStateResponse play() {
+    return PlaybackStateResponse.from(control.play());
+  }
 
-    @POST
-    @Path("/play/{kind}/{id}")
-    public PlaybackStateResponse playTrack(@PathParam("kind") final String kind, @PathParam("id") final UUID id) {
-        return PlaybackStateResponse.from(control.play(kind, id));
-    }
+  @POST
+  @Path("/play/{kind}/{id}")
+  public PlaybackStateResponse playTrack(
+      @PathParam("kind") final String kind, @PathParam("id") final UUID id) {
+    return PlaybackStateResponse.from(control.play(kind, id));
+  }
 
-    @POST
-    @Path("/pause")
-    public PlaybackStateResponse pause() {
-        return PlaybackStateResponse.from(control.pause());
-    }
+  @POST
+  @Path("/pause")
+  public PlaybackStateResponse pause() {
+    return PlaybackStateResponse.from(control.pause());
+  }
 
-    @POST
-    @Path("/stop")
-    public PlaybackStateResponse stop() {
-        return PlaybackStateResponse.from(control.stop());
-    }
+  @POST
+  @Path("/stop")
+  public PlaybackStateResponse stop() {
+    return PlaybackStateResponse.from(control.stop());
+  }
 }
