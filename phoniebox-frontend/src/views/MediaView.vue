@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { listMediaFiles, uploadMediaFile, updateMediaFileTags, deleteMediaFile, type MediaFile, type UpdateTagsPayload } from '@/api/media'
+import { getPlaybackState, playTrack, resumePlayback, pausePlayback, type PlaybackState } from '@/api/audio'
 
 const files    = ref<MediaFile[]>([])
 const loading  = ref(false)
@@ -12,6 +13,11 @@ const editing  = ref<MediaFile | null>(null)
 const editForm = reactive<UpdateTagsPayload>({ trackTitle: null, trackArtist: null, trackAlbum: null, trackGenre: null })
 const saving   = ref(false)
 
+// Playback state
+const playback = ref<PlaybackState>({ status: 'IDLE', currentTrackId: null })
+const playbackBusy = ref(false)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
 async function load() {
   loading.value = true
   error.value   = null
@@ -21,6 +27,34 @@ async function load() {
     error.value = String(e)
   } finally {
     loading.value = false
+  }
+}
+
+async function refreshPlayback() {
+  try {
+    playback.value = await getPlaybackState()
+  } catch {
+    // silently ignore poll failures
+  }
+}
+
+async function togglePlay(file: MediaFile) {
+  if (playbackBusy.value) return
+  playbackBusy.value = true
+  try {
+    if (playback.value.currentTrackId === file.id) {
+      // This track is selected — toggle play/pause
+      playback.value = playback.value.status === 'PLAYING'
+        ? await pausePlayback()
+        : await resumePlayback()
+    } else {
+      // Different track — switch and play
+      playback.value = await playTrack(file.id)
+    }
+  } catch (e) {
+    error.value = String(e)
+  } finally {
+    playbackBusy.value = false
   }
 }
 
@@ -73,6 +107,9 @@ async function remove(id: string) {
   try {
     await deleteMediaFile(id)
     files.value = files.value.filter(f => f.id !== id)
+    if (playback.value.currentTrackId === id) {
+      playback.value = { status: 'IDLE', currentTrackId: null }
+    }
   } catch (e) {
     error.value = String(e)
   }
@@ -100,7 +137,20 @@ function displayAlbum(file: MediaFile): string {
   return file.trackYear ? `${file.trackAlbum} (${file.trackYear})` : file.trackAlbum
 }
 
-onMounted(load)
+function nowPlayingLabel(): string {
+  if (!playback.value.currentTrackId) return ''
+  const f = files.value.find(f => f.id === playback.value.currentTrackId)
+  return f ? (f.trackTitle ?? f.originalFileName) : playback.value.currentTrackId
+}
+
+onMounted(async () => {
+  await Promise.all([load(), refreshPlayback()])
+  pollTimer = setInterval(refreshPlayback, 2000)
+})
+
+onUnmounted(() => {
+  if (pollTimer !== null) clearInterval(pollTimer)
+})
 </script>
 
 <template>
@@ -117,6 +167,32 @@ onMounted(load)
       </label>
     </div>
 
+    <!-- Now-playing bar -->
+    <div
+      v-if="playback.status !== 'IDLE'"
+      class="flex items-center gap-3 mb-4 px-4 py-3 rounded-lg bg-gray-800 border border-gray-700"
+    >
+      <span class="text-xs text-gray-400 uppercase tracking-wide shrink-0">
+        {{ playback.status === 'PLAYING' ? 'Playing' : 'Paused' }}
+      </span>
+      <span class="text-sm text-gray-200 font-medium truncate flex-1">{{ nowPlayingLabel() }}</span>
+      <button
+        class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full
+               bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
+        :disabled="playbackBusy"
+        @click="playback.status === 'PLAYING' ? pausePlayback().then(s => playback = s) : resumePlayback().then(s => playback = s)"
+      >
+        <!-- Pause icon -->
+        <svg v-if="playback.status === 'PLAYING'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
+        </svg>
+        <!-- Play icon -->
+        <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5,3 19,12 5,21"/>
+        </svg>
+      </button>
+    </div>
+
     <p v-if="error" class="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
       {{ error }}
     </p>
@@ -130,6 +206,7 @@ onMounted(load)
     <table v-else class="w-full text-sm">
       <thead>
         <tr class="border-b border-gray-800 text-gray-400 text-left">
+          <th class="pb-2 pr-2 font-medium w-8"></th>
           <th class="pb-2 pr-4 font-medium">Title</th>
           <th class="pb-2 pr-4 font-medium">Artist</th>
           <th class="pb-2 pr-4 font-medium">Album</th>
@@ -145,7 +222,36 @@ onMounted(load)
           v-for="file in files"
           :key="file.id"
           class="border-b border-gray-800/60 hover:bg-gray-800/30 transition-colors"
+          :class="{ 'bg-indigo-950/30': playback.currentTrackId === file.id }"
         >
+          <!-- Play / Pause button -->
+          <td class="py-3 pr-2">
+            <button
+              class="w-7 h-7 flex items-center justify-center rounded-full transition-colors disabled:opacity-40"
+              :class="playback.currentTrackId === file.id
+                ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                : 'text-gray-500 hover:text-indigo-400 hover:bg-gray-800'"
+              :disabled="playbackBusy"
+              :title="playback.currentTrackId === file.id && playback.status === 'PLAYING' ? 'Pause' : 'Play'"
+              @click="togglePlay(file)"
+            >
+              <!-- Pause icon — shown when this track is actively playing -->
+              <svg
+                v-if="playback.currentTrackId === file.id && playback.status === 'PLAYING'"
+                xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
+              >
+                <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
+              </svg>
+              <!-- Play icon — all other states -->
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
+              >
+                <polygon points="5,3 19,12 5,21"/>
+              </svg>
+            </button>
+          </td>
+
           <!-- Title: tag title preferred; filename as fallback -->
           <td class="py-3 pr-4 max-w-xs">
             <div class="font-medium text-gray-200 truncate">

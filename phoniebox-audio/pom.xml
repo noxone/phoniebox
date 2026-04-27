@@ -34,6 +34,22 @@
             <artifactId>quarkus-arc</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-jackson</artifactId>
+        </dependency>
+
+        <!-- Pure-Java MP3 decoder; registers as a javax.sound.sampled SPI so
+             AudioSystem picks it up automatically for .mp3 streams. -->
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>mp3spi</artifactId>
+            <version>1.9.5.4</version>
+        </dependency>
+        <dependency>
             <groupId>eu.noxone.phoniebox</groupId>
             <artifactId>phoniebox-arch</artifactId>
             <scope>test</scope>

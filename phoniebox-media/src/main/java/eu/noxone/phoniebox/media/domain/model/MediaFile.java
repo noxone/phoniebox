@@ -1,6 +1,7 @@
 package eu.noxone.phoniebox.media.domain.model;
 
 import eu.noxone.phoniebox.shared.domain.DefaultDomainEntity;
+import eu.noxone.phoniebox.shared.domain.Playable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -9,6 +10,7 @@ import jakarta.persistence.Table;
 
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Aggregate root representing an uploaded sound file.
@@ -31,7 +33,7 @@ import java.util.Optional;
  */
 @Entity
 @Table(name = "media_files")
-public class MediaFile extends DefaultDomainEntity<MediaFileId> {
+public class MediaFile extends DefaultDomainEntity<MediaFileId> implements Playable {
 
     @Id
     @Column(name = "id", nullable = false, updatable = false)
@@ -85,6 +87,18 @@ public class MediaFile extends DefaultDomainEntity<MediaFileId> {
     /** Returns extracted audio metadata, or empty if extraction was not attempted or failed. */
     public Optional<AudioMetadata> getAudioMetadata() {
         return Optional.ofNullable(audioMetadata);
+    }
+
+    // ── Playable ──────────────────────────────────────────────────────────────
+
+    @Override
+    public UUID getPlayableId() {
+        return id.getValue();
+    }
+
+    @Override
+    public String getMimeType() {
+        return metadata.getMimeType().getValue();
     }
 
     /** Stores audio metadata extracted after the file was persisted. */
