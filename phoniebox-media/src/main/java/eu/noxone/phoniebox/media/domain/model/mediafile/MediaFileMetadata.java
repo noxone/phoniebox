@@ -1,5 +1,6 @@
-package eu.noxone.phoniebox.media.domain.model;
+package eu.noxone.phoniebox.media.domain.model.mediafile;
 
+import eu.noxone.phoniebox.media.domain.model.shared.MimeType;
 import eu.noxone.phoniebox.shared.domain.DomainAttribute;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

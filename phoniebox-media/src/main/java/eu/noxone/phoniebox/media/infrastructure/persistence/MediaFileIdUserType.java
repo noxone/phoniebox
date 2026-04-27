@@ -1,6 +1,6 @@
 package eu.noxone.phoniebox.media.infrastructure.persistence;
 
-import eu.noxone.phoniebox.media.domain.model.MediaFileId;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFileId;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.usertype.UserType;
 

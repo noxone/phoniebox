@@ -1,6 +1,6 @@
 package eu.noxone.phoniebox.media.application.port.in;
 
-import eu.noxone.phoniebox.media.domain.model.MediaFile;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFile;
 
 import java.util.Optional;
 import java.util.UUID;

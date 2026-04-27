@@ -1,6 +1,6 @@
 package eu.noxone.phoniebox.media.infrastructure.persistence;
 
-import eu.noxone.phoniebox.media.domain.model.UploadedAt;
+import eu.noxone.phoniebox.media.domain.model.mediafile.UploadedAt;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

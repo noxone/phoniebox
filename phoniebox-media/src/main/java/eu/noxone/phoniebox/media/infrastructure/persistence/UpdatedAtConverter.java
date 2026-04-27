@@ -1,6 +1,6 @@
 package eu.noxone.phoniebox.media.infrastructure.persistence;
 
-import eu.noxone.phoniebox.media.domain.model.UpdatedAt;
+import eu.noxone.phoniebox.media.domain.model.mediafile.UpdatedAt;
 import eu.noxone.phoniebox.shared.persistence.DomainAttributeConverter;
 import jakarta.persistence.Converter;
 

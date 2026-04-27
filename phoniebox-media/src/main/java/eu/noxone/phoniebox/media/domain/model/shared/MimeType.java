@@ -1,4 +1,4 @@
-package eu.noxone.phoniebox.media.domain.model;
+package eu.noxone.phoniebox.media.domain.model.shared;
 
 import eu.noxone.phoniebox.shared.domain.DefaultDomainAttribute;
 

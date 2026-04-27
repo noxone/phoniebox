@@ -1,5 +1,10 @@
-package eu.noxone.phoniebox.media.domain.model;
+package eu.noxone.phoniebox.media.domain.model.mediafile;
 
+import eu.noxone.phoniebox.media.domain.model.audio.AudioMetadata;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackAlbum;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackArtist;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackGenre;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackTitle;
 import eu.noxone.phoniebox.shared.domain.DefaultDomainEntity;
 import eu.noxone.phoniebox.shared.domain.Playable;
 import jakarta.persistence.Column;
@@ -90,6 +95,13 @@ public class MediaFile extends DefaultDomainEntity<MediaFileId> implements Playa
     }
 
     // ── Playable ──────────────────────────────────────────────────────────────
+
+    public static final String KIND = "MEDIA_FILE";
+
+    @Override
+    public String getPlayableKind() {
+        return KIND;
+    }
 
     @Override
     public UUID getPlayableId() {

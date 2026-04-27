@@ -1,7 +1,7 @@
 package eu.noxone.phoniebox.media.web.rest;
 
-import eu.noxone.phoniebox.media.domain.model.AudioMetadata;
-import eu.noxone.phoniebox.media.domain.model.MediaFile;
+import eu.noxone.phoniebox.media.domain.model.audio.AudioMetadata;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFile;
 
 import java.time.Instant;
 import java.util.UUID;

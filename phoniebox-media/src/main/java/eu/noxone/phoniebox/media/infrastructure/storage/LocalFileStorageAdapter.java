@@ -1,7 +1,7 @@
 package eu.noxone.phoniebox.media.infrastructure.storage;
 
 import eu.noxone.phoniebox.media.application.port.out.FileStoragePort;
-import eu.noxone.phoniebox.media.domain.model.MediaFileId;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFileId;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 

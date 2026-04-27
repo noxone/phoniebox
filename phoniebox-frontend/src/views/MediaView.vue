@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { listMediaFiles, uploadMediaFile, updateMediaFileTags, deleteMediaFile, type MediaFile, type UpdateTagsPayload } from '@/api/media'
-import { getPlaybackState, playTrack, resumePlayback, pausePlayback, type PlaybackState } from '@/api/audio'
+import { getPlaybackState, playTrack, resumePlayback, pausePlayback, stopPlayback, type PlaybackState } from '@/api/audio'
+
+const MEDIA_FILE_KIND = 'MEDIA_FILE'
 
 const files    = ref<MediaFile[]>([])
 const loading  = ref(false)
@@ -14,7 +16,7 @@ const editForm = reactive<UpdateTagsPayload>({ trackTitle: null, trackArtist: nu
 const saving   = ref(false)
 
 // Playback state
-const playback = ref<PlaybackState>({ status: 'IDLE', currentTrackId: null })
+const playback = ref<PlaybackState>({ status: 'IDLE', currentTrackKind: null, currentTrackId: null })
 const playbackBusy = ref(false)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
@@ -38,18 +40,40 @@ async function refreshPlayback() {
   }
 }
 
+async function nowPlayingToggle() {
+  if (playbackBusy.value) return
+  playbackBusy.value = true
+  try {
+    playback.value = playback.value.status === 'PLAYING'
+      ? await pausePlayback()
+      : await resumePlayback()
+  } finally {
+    playbackBusy.value = false
+  }
+}
+
+async function nowPlayingStop() {
+  if (playbackBusy.value) return
+  playbackBusy.value = true
+  try {
+    playback.value = await stopPlayback()
+  } finally {
+    playbackBusy.value = false
+  }
+}
+
 async function togglePlay(file: MediaFile) {
   if (playbackBusy.value) return
   playbackBusy.value = true
   try {
-    if (playback.value.currentTrackId === file.id) {
+    if (playback.value.currentTrackKind === MEDIA_FILE_KIND && playback.value.currentTrackId === file.id) {
       // This track is selected — toggle play/pause
       playback.value = playback.value.status === 'PLAYING'
         ? await pausePlayback()
         : await resumePlayback()
     } else {
       // Different track — switch and play
-      playback.value = await playTrack(file.id)
+      playback.value = await playTrack(MEDIA_FILE_KIND, file.id)
     }
   } catch (e) {
     error.value = String(e)
@@ -107,8 +131,8 @@ async function remove(id: string) {
   try {
     await deleteMediaFile(id)
     files.value = files.value.filter(f => f.id !== id)
-    if (playback.value.currentTrackId === id) {
-      playback.value = { status: 'IDLE', currentTrackId: null }
+    if (playback.value.currentTrackKind === MEDIA_FILE_KIND && playback.value.currentTrackId === id) {
+      playback.value = { status: 'IDLE', currentTrackKind: null, currentTrackId: null }
     }
   } catch (e) {
     error.value = String(e)
@@ -139,8 +163,11 @@ function displayAlbum(file: MediaFile): string {
 
 function nowPlayingLabel(): string {
   if (!playback.value.currentTrackId) return ''
-  const f = files.value.find(f => f.id === playback.value.currentTrackId)
-  return f ? (f.trackTitle ?? f.originalFileName) : playback.value.currentTrackId
+  if (playback.value.currentTrackKind === MEDIA_FILE_KIND) {
+    const f = files.value.find(f => f.id === playback.value.currentTrackId)
+    return f ? (f.trackTitle ?? f.originalFileName) : playback.value.currentTrackId
+  }
+  return playback.value.currentTrackId
 }
 
 onMounted(async () => {
@@ -180,15 +207,24 @@ onUnmounted(() => {
         class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full
                bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
         :disabled="playbackBusy"
-        @click="playback.status === 'PLAYING' ? pausePlayback().then(s => playback = s) : resumePlayback().then(s => playback = s)"
+        @click="nowPlayingToggle"
       >
-        <!-- Pause icon -->
         <svg v-if="playback.status === 'PLAYING'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
           <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
         </svg>
-        <!-- Play icon -->
         <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
           <polygon points="5,3 19,12 5,21"/>
+        </svg>
+      </button>
+      <button
+        class="shrink-0 w-8 h-8 flex items-center justify-center rounded-full
+               bg-gray-700 hover:bg-gray-600 transition-colors disabled:opacity-50"
+        :disabled="playbackBusy"
+        title="Stop"
+        @click="nowPlayingStop"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="5" y="5" width="14" height="14" rx="1"/>
         </svg>
       </button>
     </div>
@@ -222,22 +258,22 @@ onUnmounted(() => {
           v-for="file in files"
           :key="file.id"
           class="border-b border-gray-800/60 hover:bg-gray-800/30 transition-colors"
-          :class="{ 'bg-indigo-950/30': playback.currentTrackId === file.id }"
+          :class="{ 'bg-indigo-950/30': playback.currentTrackKind === MEDIA_FILE_KIND && playback.currentTrackId === file.id }"
         >
           <!-- Play / Pause button -->
           <td class="py-3 pr-2">
             <button
               class="w-7 h-7 flex items-center justify-center rounded-full transition-colors disabled:opacity-40"
-              :class="playback.currentTrackId === file.id
+              :class="playback.currentTrackKind === MEDIA_FILE_KIND && playback.currentTrackId === file.id
                 ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
                 : 'text-gray-500 hover:text-indigo-400 hover:bg-gray-800'"
               :disabled="playbackBusy"
-              :title="playback.currentTrackId === file.id && playback.status === 'PLAYING' ? 'Pause' : 'Play'"
+              :title="playback.currentTrackKind === MEDIA_FILE_KIND && playback.currentTrackId === file.id && playback.status === 'PLAYING' ? 'Pause' : 'Play'"
               @click="togglePlay(file)"
             >
               <!-- Pause icon — shown when this track is actively playing -->
               <svg
-                v-if="playback.currentTrackId === file.id && playback.status === 'PLAYING'"
+                v-if="playback.currentTrackKind === MEDIA_FILE_KIND && playback.currentTrackId === file.id && playback.status === 'PLAYING'"
                 xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"
               >
                 <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>

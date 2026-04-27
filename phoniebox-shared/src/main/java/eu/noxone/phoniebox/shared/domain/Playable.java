@@ -15,6 +15,9 @@ import java.util.UUID;
  */
 public interface Playable {
 
+    /** Kind discriminator so the audio module can route to the right source adapter. */
+    String getPlayableKind();
+
     /** Unique identifier used by the audio module to locate the audio data. */
     UUID getPlayableId();
 

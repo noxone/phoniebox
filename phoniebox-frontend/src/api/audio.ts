@@ -4,6 +4,7 @@ export type PlaybackStatus = 'IDLE' | 'PLAYING' | 'PAUSED'
 
 export interface PlaybackState {
   status: PlaybackStatus
+  currentTrackKind: string | null
   currentTrackId: string | null
 }
 
@@ -19,17 +20,22 @@ export async function getPlaybackState(): Promise<PlaybackState> {
   return res.json()
 }
 
-/** Select a track and start playing immediately. */
-export async function playTrack(id: string): Promise<PlaybackState> {
-  return post(`/play/${id}`)
+/** Select a source and start playing immediately. */
+export async function playTrack(kind: string, id: string): Promise<PlaybackState> {
+  return post(`/play/${kind}/${id}`)
 }
 
-/** Resume the currently selected track. */
+/** Resume the currently selected source. */
 export async function resumePlayback(): Promise<PlaybackState> {
   return post('/play')
 }
 
-/** Pause the currently playing track. */
+/** Pause the currently playing source. */
 export async function pausePlayback(): Promise<PlaybackState> {
   return post('/pause')
+}
+
+/** Stop playback and clear the current source. */
+export async function stopPlayback(): Promise<PlaybackState> {
+  return post('/stop')
 }

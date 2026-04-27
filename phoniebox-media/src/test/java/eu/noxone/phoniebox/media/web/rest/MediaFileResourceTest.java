@@ -1,11 +1,11 @@
 package eu.noxone.phoniebox.media.web.rest;
 
 import eu.noxone.phoniebox.media.application.service.MediaFileApplicationService;
-import eu.noxone.phoniebox.media.domain.model.FileSize;
-import eu.noxone.phoniebox.media.domain.model.MediaFile;
-import eu.noxone.phoniebox.media.domain.model.MediaFileMetadata;
-import eu.noxone.phoniebox.media.domain.model.MimeType;
-import eu.noxone.phoniebox.media.domain.model.OriginalFileName;
+import eu.noxone.phoniebox.media.domain.model.mediafile.FileSize;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFile;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFileMetadata;
+import eu.noxone.phoniebox.media.domain.model.shared.MimeType;
+import eu.noxone.phoniebox.media.domain.model.mediafile.OriginalFileName;
 import eu.noxone.phoniebox.shared.paging.PageResponse;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;

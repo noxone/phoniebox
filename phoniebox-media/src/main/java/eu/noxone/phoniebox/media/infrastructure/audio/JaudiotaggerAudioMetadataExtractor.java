@@ -1,16 +1,16 @@
 package eu.noxone.phoniebox.media.infrastructure.audio;
 
 import eu.noxone.phoniebox.media.application.port.out.AudioMetadataExtractor;
-import eu.noxone.phoniebox.media.domain.model.AudioMetadata;
-import eu.noxone.phoniebox.media.domain.model.TrackAlbum;
-import eu.noxone.phoniebox.media.domain.model.TrackArtist;
-import eu.noxone.phoniebox.media.domain.model.TrackBitrate;
-import eu.noxone.phoniebox.media.domain.model.TrackDuration;
-import eu.noxone.phoniebox.media.domain.model.TrackGenre;
-import eu.noxone.phoniebox.media.domain.model.TrackNumber;
-import eu.noxone.phoniebox.media.domain.model.TrackSampleRate;
-import eu.noxone.phoniebox.media.domain.model.TrackTitle;
-import eu.noxone.phoniebox.media.domain.model.TrackYear;
+import eu.noxone.phoniebox.media.domain.model.audio.AudioMetadata;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackAlbum;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackArtist;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackBitrate;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackDuration;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackGenre;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackNumber;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackSampleRate;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackTitle;
+import eu.noxone.phoniebox.media.domain.model.audio.TrackYear;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.jaudiotagger.audio.AudioFileIO;
 import org.jaudiotagger.audio.AudioHeader;

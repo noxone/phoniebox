@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * Stateful audio playback service backed by {@code javax.sound.sampled}.
  *
  * <p>A single daemon thread handles the read/write loop. Control methods
- * ({@link #play()}, {@link #pause()}) interact with the active
+ * ({@link #play()}, {@link #pause()}, {@link #stop()}) interact with the active
  * {@link SourceDataLine} directly from the caller's thread — all state is
  * guarded by the object's intrinsic lock.
  *
@@ -51,6 +51,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
     // ── All fields below are guarded by 'this' ────────────────────────────────
     private PlaybackStatus status = PlaybackStatus.IDLE;
+    private String currentTrackKind;
     private UUID currentTrackId;
     private SourceDataLine activeLine;
 
@@ -66,7 +67,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
     @Override
     public synchronized void play(final Playable source) {
-        play(source.getPlayableId());
+        play(source.getPlayableKind(), source.getPlayableId());
     }
 
     // ── PlaybackControlUseCase ────────────────────────────────────────────────
@@ -77,8 +78,9 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
     }
 
     @Override
-    public synchronized PlaybackState setTrack(final UUID trackId) {
+    public synchronized PlaybackState setTrack(final String kind, final UUID trackId) {
         stopCurrent();
+        currentTrackKind = kind;
         currentTrackId = trackId;
         return snapshot();
     }
@@ -87,7 +89,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
     public synchronized PlaybackState play() {
         if (currentTrackId == null) return snapshot();
         switch (status) {
-            case IDLE   -> startPlaybackThread(currentTrackId);
+            case IDLE   -> startPlaybackThread(currentTrackKind, currentTrackId);
             case PAUSED -> resumeLine();
             case PLAYING -> { /* already playing, no-op */ }
         }
@@ -95,10 +97,11 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
     }
 
     @Override
-    public synchronized PlaybackState play(final UUID trackId) {
+    public synchronized PlaybackState play(final String kind, final UUID trackId) {
         stopCurrent();
+        currentTrackKind = kind;
         currentTrackId = trackId;
-        startPlaybackThread(trackId);
+        startPlaybackThread(kind, trackId);
         return snapshot();
     }
 
@@ -111,19 +114,27 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
         return snapshot();
     }
 
+    @Override
+    public synchronized PlaybackState stop() {
+        stopCurrent();
+        currentTrackKind = null;
+        currentTrackId = null;
+        return snapshot();
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private PlaybackState snapshot() {
-        return new PlaybackState(status, currentTrackId);
+        return new PlaybackState(status, currentTrackKind, currentTrackId);
     }
 
-    private void startPlaybackThread(final UUID trackId) {
+    private void startPlaybackThread(final String kind, final UUID trackId) {
         stopRequested = false;
         status = PlaybackStatus.PLAYING;
         Thread.ofPlatform()
                 .daemon(true)
                 .name("audio-playback")
-                .start(() -> runPlayback(trackId));
+                .start(() -> runPlayback(kind, trackId));
     }
 
     private void resumeLine() {
@@ -143,9 +154,9 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
     // ── Playback thread ───────────────────────────────────────────────────────
 
-    private void runPlayback(final UUID trackId) {
+    private void runPlayback(final String kind, final UUID trackId) {
         SourceDataLine line = null;
-        try (var raw = streamPort.openStream(trackId);
+        try (var raw = streamPort.openStream(kind, trackId);
              var audio = decoded(AudioSystem.getAudioInputStream(new BufferedInputStream(raw)))) {
 
             final AudioFormat format = audio.getFormat();
@@ -153,7 +164,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
             line.open(format);
 
             synchronized (this) {
-                if (stopRequested) return;   // stopped before we even started
+                if (stopRequested) return;
                 activeLine = line;
                 line.start();
             }
@@ -161,8 +172,8 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
             writeLoop(audio, line);
 
         } catch (IOException | UnsupportedAudioFileException | LineUnavailableException e) {
-            LOG.log(Level.WARNING, "Playback error for track " + trackId, e);
-            throw new AudioPlaybackException("Playback failed for track " + trackId, e);
+            LOG.log(Level.WARNING, "Playback error for " + kind + "/" + trackId, e);
+            throw new AudioPlaybackException("Playback failed for " + kind + "/" + trackId, e);
         } finally {
             if (line != null) {
                 if (!stopRequested) line.drain();
@@ -172,7 +183,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
             synchronized (this) {
                 if (activeLine == line) activeLine = null;
                 if (!stopRequested && status == PlaybackStatus.PLAYING) {
-                    status = PlaybackStatus.IDLE;   // track ended naturally
+                    status = PlaybackStatus.IDLE;
                 }
             }
         }

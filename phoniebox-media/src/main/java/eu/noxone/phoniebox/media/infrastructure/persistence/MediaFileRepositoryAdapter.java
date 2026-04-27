@@ -1,8 +1,8 @@
 package eu.noxone.phoniebox.media.infrastructure.persistence;
 
 import eu.noxone.phoniebox.media.application.port.out.MediaFileRepository;
-import eu.noxone.phoniebox.media.domain.model.MediaFile;
-import eu.noxone.phoniebox.media.domain.model.MediaFileId;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFile;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFileId;
 import eu.noxone.phoniebox.shared.paging.PageRequest;
 import eu.noxone.phoniebox.shared.paging.PageResponse;
 import io.quarkus.hibernate.orm.panache.PanacheQuery;

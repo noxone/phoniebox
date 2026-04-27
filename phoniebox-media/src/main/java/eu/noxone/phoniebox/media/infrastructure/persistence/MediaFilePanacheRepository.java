@@ -1,7 +1,7 @@
 package eu.noxone.phoniebox.media.infrastructure.persistence;
 
-import eu.noxone.phoniebox.media.domain.model.MediaFile;
-import eu.noxone.phoniebox.media.domain.model.MediaFileId;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFile;
+import eu.noxone.phoniebox.media.domain.model.mediafile.MediaFileId;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 
