@@ -11,6 +11,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -21,6 +23,7 @@ import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import org.eclipse.microprofile.context.ManagedExecutor;
 
 /**
  * Stateful audio playback service backed by {@code javax.sound.sampled}.
@@ -54,6 +57,8 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
   // Written under lock, read from playback thread without lock (volatile)
   private volatile boolean stopRequested;
+
+  @Inject private ManagedExecutor executor;
 
   @Inject
   public AudioApplicationService(final AudioStreamPort streamPort) {
@@ -130,7 +135,12 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
   private void startPlaybackThread(final String kind, final UUID trackId) {
     stopRequested = false;
     status = PlaybackStatus.PLAYING;
-    Thread.ofPlatform().daemon(true).name("audio-playback").start(() -> runPlayback(kind, trackId));
+    try {
+      var stream = streamPort.openStream(kind, trackId);
+      executor.execute(() -> runPlayback(kind, trackId, stream));
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   private void resumeLine() {
@@ -150,9 +160,12 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
   // ── Playback thread ───────────────────────────────────────────────────────
 
-  private void runPlayback(final String kind, final UUID trackId) {
+  private void runPlayback(final String kind, final UUID trackId, InputStream stream) {
+    if (!(stream instanceof BufferedInputStream)) {
+      stream = new BufferedInputStream(stream);
+    }
     SourceDataLine line = null;
-    try (var raw = streamPort.openStream(kind, trackId);
+    try (var raw = stream;
         var audio = decoded(AudioSystem.getAudioInputStream(new BufferedInputStream(raw)))) {
 
       final AudioFormat format = audio.getFormat();
@@ -160,7 +173,9 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
       line.open(format);
 
       synchronized (this) {
-        if (stopRequested) return;
+        if (stopRequested) {
+          return;
+        }
         activeLine = line;
         line.start();
       }
@@ -172,12 +187,16 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
       throw new AudioPlaybackException("Playback failed for " + kind + "/" + trackId, e);
     } finally {
       if (line != null) {
-        if (!stopRequested) line.drain();
+        if (!stopRequested) {
+          line.drain();
+        }
         line.stop();
         line.close();
       }
       synchronized (this) {
-        if (activeLine == line) activeLine = null;
+        if (activeLine == line) {
+          activeLine = null;
+        }
         if (!stopRequested && status == PlaybackStatus.PLAYING) {
           status = PlaybackStatus.IDLE;
         }
