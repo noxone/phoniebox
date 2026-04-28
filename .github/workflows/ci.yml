@@ -15,9 +15,9 @@ jobs:
       fail-fast: false
       matrix:
         jdk:
+          - { distribution: graalvm, version: 21 }
           - { distribution: temurin,  version: 21 }
-          - { distribution: corretto, version: 21 }
-          - { distribution: mandrel,  version: 21 }
+          - { distribution: adopt-hotspot,  version: 21 }
 
     steps:
       - name: Checkout
