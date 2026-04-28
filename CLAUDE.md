@@ -53,7 +53,7 @@ This is a **Maven multi-module Quarkus application** with a **Vue 3 SPA frontend
 | `phoniebox-shared` | Pure Java base abstractions (e.g. `AbstractId` UUID wrapper); zero framework deps |
 | `phoniebox-arch` | Reusable ArchUnit rules that enforce layer boundaries across all feature modules |
 | `phoniebox-media` | Fully implemented media file CRUD feature |
-| `phoniebox-audio` | Placeholder — future vlcj/libVLC audio playback |
+| `phoniebox-audio` | Audio playback via `javax.sound.sampled` |
 | `phoniebox-gpio` | Placeholder — future pi4j GPIO/button control |
 | `phoniebox-playlist` | Placeholder — future playlist management |
 | `phoniebox-app` | **Only runnable module.** Assembles all feature modules, configures SQLite + Flyway, serves the built Vue SPA as static files |

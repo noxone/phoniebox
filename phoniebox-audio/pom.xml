@@ -11,12 +11,6 @@
   <artifactId>phoniebox-audio</artifactId>
   <name>Phoniebox :: Audio</name>
 
-  <!-- TODO: Planned dependencies
-         - eu.noxone.phoniebox:phoniebox-shared
-         - io.quarkus:quarkus-arc
-         - uk.co.caprica:vlcj  (audio playback via libVLC)
-    -->
-
   <dependencies>
     <dependency>
       <groupId>eu.noxone.phoniebox</groupId>
