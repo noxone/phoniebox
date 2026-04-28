@@ -1,11 +1,13 @@
 package eu.noxone.phoniebox.audio.application.service;
 
 import eu.noxone.phoniebox.audio.application.AudioPlaybackException;
+import eu.noxone.phoniebox.audio.application.AudioSettingKeys;
 import eu.noxone.phoniebox.audio.application.PlaybackState;
 import eu.noxone.phoniebox.audio.application.PlaybackStatus;
 import eu.noxone.phoniebox.audio.application.port.in.PlayAudioUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.PlaybackControlUseCase;
 import eu.noxone.phoniebox.audio.application.port.out.AudioStreamPort;
+import eu.noxone.phoniebox.settings.application.port.in.GetSettingUseCase;
 import eu.noxone.phoniebox.shared.domain.Playable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -21,6 +23,7 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import org.eclipse.microprofile.context.ManagedExecutor;
@@ -48,6 +51,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
   private static final int BUFFER_SIZE = 8 * 1024;
 
   private final AudioStreamPort streamPort;
+  private final GetSettingUseCase getSetting;
 
   // ── All fields below are guarded by 'this' ────────────────────────────────
   private PlaybackStatus status = PlaybackStatus.IDLE;
@@ -61,8 +65,10 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
   @Inject private ManagedExecutor executor;
 
   @Inject
-  public AudioApplicationService(final AudioStreamPort streamPort) {
+  public AudioApplicationService(
+      final AudioStreamPort streamPort, final GetSettingUseCase getSetting) {
     this.streamPort = streamPort;
+    this.getSetting = getSetting;
   }
 
   // ── PlayAudioUseCase ──────────────────────────────────────────────────────
@@ -137,7 +143,8 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
     status = PlaybackStatus.PLAYING;
     try {
       var stream = streamPort.openStream(kind, trackId);
-      executor.execute(() -> runPlayback(kind, trackId, stream));
+      String mixerName = getSetting.getSetting(AudioSettingKeys.SELECTED_MIXER_NAME).orElse(null);
+      executor.execute(() -> runPlayback(kind, trackId, stream, mixerName));
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
@@ -160,7 +167,8 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
   // ── Playback thread ───────────────────────────────────────────────────────
 
-  private void runPlayback(final String kind, final UUID trackId, InputStream stream) {
+  private void runPlayback(
+      final String kind, final UUID trackId, InputStream stream, final String mixerName) {
     if (!(stream instanceof BufferedInputStream)) {
       stream = new BufferedInputStream(stream);
     }
@@ -169,7 +177,11 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
         var audio = decoded(AudioSystem.getAudioInputStream(new BufferedInputStream(raw)))) {
 
       final AudioFormat format = audio.getFormat();
-      line = (SourceDataLine) AudioSystem.getLine(new DataLine.Info(SourceDataLine.class, format));
+      final DataLine.Info lineInfo = new DataLine.Info(SourceDataLine.class, format);
+      line =
+          mixerName != null
+              ? openOnMixer(mixerName, lineInfo)
+              : (SourceDataLine) AudioSystem.getLine(lineInfo);
       line.open(format);
 
       synchronized (this) {
@@ -211,6 +223,20 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
     while (!stopRequested && (bytesRead = audio.read(buffer, 0, buffer.length)) != -1) {
       line.write(buffer, 0, bytesRead);
     }
+  }
+
+  private static SourceDataLine openOnMixer(final String mixerName, final DataLine.Info lineInfo)
+      throws LineUnavailableException {
+    for (Mixer.Info info : AudioSystem.getMixerInfo()) {
+      if (info.getName().equals(mixerName)) {
+        try {
+          return (SourceDataLine) AudioSystem.getMixer(info).getLine(lineInfo);
+        } catch (LineUnavailableException e) {
+          break; // mixer found but doesn't support this format — fall back to default
+        }
+      }
+    }
+    return (SourceDataLine) AudioSystem.getLine(lineInfo);
   }
 
   /**

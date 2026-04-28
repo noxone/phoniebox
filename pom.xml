@@ -14,6 +14,7 @@
     <module>phoniebox-processor</module>
     <module>phoniebox-arch</module>
     <module>phoniebox-media</module>
+    <module>phoniebox-settings</module>
     <module>phoniebox-audio</module>
     <module>phoniebox-gpio</module>
     <module>phoniebox-playlist</module>
@@ -89,6 +90,11 @@
       <dependency>
         <groupId>eu.noxone.phoniebox</groupId>
         <artifactId>phoniebox-media</artifactId>
+        <version>${phoniebox.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>eu.noxone.phoniebox</groupId>
+        <artifactId>phoniebox-settings</artifactId>
         <version>${phoniebox.version}</version>
       </dependency>
       <dependency>

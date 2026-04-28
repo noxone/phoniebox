@@ -8,6 +8,7 @@ const route = useRoute()
 const navItems = [
   { label: 'Media', path: '/media' },
   { label: 'Radio', path: '/radio' },
+  { label: 'Settings', path: '/settings' },
 ]
 
 const playback = ref<PlaybackState>({ status: 'IDLE', currentTrackKind: null, currentTrackId: null })

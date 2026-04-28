@@ -23,6 +23,10 @@
     </dependency>
     <dependency>
       <groupId>eu.noxone.phoniebox</groupId>
+      <artifactId>phoniebox-settings</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>eu.noxone.phoniebox</groupId>
       <artifactId>phoniebox-audio</artifactId>
     </dependency>
     <dependency>
