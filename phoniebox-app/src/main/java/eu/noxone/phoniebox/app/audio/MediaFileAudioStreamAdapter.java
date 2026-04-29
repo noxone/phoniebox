@@ -12,12 +12,14 @@ import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
+import java.io.StringReader;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.Locale;
 import java.util.UUID;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 /**
  * Wires the audio module's {@link AudioStreamPort} to the media and stream sources.
@@ -26,7 +28,7 @@ import java.util.UUID;
  *
  * <ul>
  *   <li>{@code MEDIA_FILE} — reads bytes from the local file system via {@link FileStoragePort}
- *   <li>{@code AUDIO_STREAM} — opens a live HTTP connection to the stream URL
+ *   <li>{@code AUDIO_STREAM} — opens a live HTTP connection to the stream URL via OkHttp
  * </ul>
  */
 @ApplicationScoped
@@ -34,6 +36,13 @@ public class MediaFileAudioStreamAdapter implements AudioStreamPort {
 
   private static final String KIND_MEDIA_FILE = "MEDIA_FILE";
   private static final String KIND_AUDIO_STREAM = "AUDIO_STREAM";
+
+  private static final OkHttpClient HTTP_CLIENT =
+      new OkHttpClient.Builder()
+          .connectTimeout(Duration.ofSeconds(10))
+          .readTimeout(Duration.ofSeconds(30))
+          .writeTimeout(Duration.ofSeconds(10))
+          .build();
 
   private final FileStoragePort storage;
   private final AudioStreamRepository audioStreamRepository;
@@ -64,7 +73,13 @@ public class MediaFileAudioStreamAdapter implements AudioStreamPort {
             .findById(AudioStreamId.of(id))
             .orElseThrow(() -> new IOException("Audio stream not found: " + id));
     String url = resolvePlaylistUrl(stream.getUrl().getValue());
-    return new BufferedInputStream(URI.create(url).toURL().openStream());
+    Request request = new Request.Builder().url(url).build();
+    Response response = HTTP_CLIENT.newCall(request).execute();
+    if (!response.isSuccessful()) {
+      response.close();
+      throw new IOException("HTTP " + response.code() + " opening stream: " + url);
+    }
+    return response.body().byteStream();
   }
 
   private String resolvePlaylistUrl(final String url) throws IOException {
@@ -85,11 +100,15 @@ public class MediaFileAudioStreamAdapter implements AudioStreamPort {
 
   private String fetchFirstUrlFromPlaylist(final String playlistUrl, final boolean isPls)
       throws IOException {
-    try (var reader =
-        new BufferedReader(
-            new InputStreamReader(
-                URI.create(playlistUrl).toURL().openStream(), StandardCharsets.UTF_8))) {
-      return isPls ? parsePls(reader) : parseM3u(reader);
+    Request request = new Request.Builder().url(playlistUrl).build();
+    try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        throw new IOException("HTTP " + response.code() + " fetching playlist: " + playlistUrl);
+      }
+      String content = response.body().string();
+      try (var reader = new BufferedReader(new StringReader(content))) {
+        return isPls ? parsePls(reader) : parseM3u(reader);
+      }
     }
   }
 

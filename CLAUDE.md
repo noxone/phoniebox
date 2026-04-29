@@ -158,6 +158,7 @@ Consequences:
 ### Tech Stack
 
 - **Java 21**, Quarkus 3.22.3 (`quarkus-rest`, `quarkus-hibernate-orm-panache`, `quarkus-flyway`, `quarkus-jdbc-sqlite`)
+- **OkHttp 4.12.0** — the only permitted HTTP client. `java.net.URLConnection`, `URL.openStream()`, and `URL.openConnection()` are banned by ArchUnit rule. Every `OkHttpClient.Builder` must explicitly call `connectTimeout`, `readTimeout`, and `writeTimeout` (use `Duration.ZERO` for intentionally unbounded streaming connections).
 - **Vue 3.4**, Vue Router 4.3, TypeScript 5.4, Vite 5.2, Tailwind CSS 3.4
 - **Node v20.11.0 / npm 10.4.0** (pinned via `frontend-maven-plugin`)
 - **ArchUnit 1.3.0** for architecture compliance, **JUnit 5** + **REST Assured** for testing

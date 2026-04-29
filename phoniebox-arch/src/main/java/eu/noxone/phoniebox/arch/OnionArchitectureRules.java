@@ -14,6 +14,8 @@ import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import eu.noxone.phoniebox.shared.domain.DomainAttribute;
 import eu.noxone.phoniebox.shared.domain.DomainEntity;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Shared, reusable ArchUnit rules that enforce the onion architecture contract for every feature
@@ -224,6 +226,116 @@ public final class OnionArchitectureRules {
         .allowEmptyShould(true);
   }
 
+  // ── HTTP client rules ─────────────────────────────────────────────────────
+
+  /**
+   * No class may use {@code java.net.URLConnection} or its subclasses, nor call {@code
+   * URL.openStream()} / {@code URL.openConnection()}.
+   *
+   * <p>All outbound HTTP must go through OkHttp so that timeouts, logging, and error handling are
+   * consistent.
+   */
+  public static ArchRule noUrlConnectionUsage() {
+    return noClasses()
+        .should(
+            new ArchCondition<JavaClass>(
+                "not use URLConnection or call URL.openStream/openConnection") {
+              private static final Set<String> FORBIDDEN_CLASSES =
+                  Set.of("java.net.URLConnection", "java.net.HttpURLConnection");
+              private static final Set<String> FORBIDDEN_URL_METHODS =
+                  Set.of("openStream", "openConnection");
+
+              @Override
+              public void check(final JavaClass clazz, final ConditionEvents events) {
+                clazz.getDirectDependenciesFromSelf().stream()
+                    .filter(dep -> FORBIDDEN_CLASSES.contains(dep.getTargetClass().getName()))
+                    .forEach(
+                        dep ->
+                            events.add(
+                                SimpleConditionEvent.violated(
+                                    clazz,
+                                    clazz.getDescription()
+                                        + " must not use "
+                                        + dep.getTargetClass().getSimpleName()
+                                        + " — use OkHttp instead")));
+
+                clazz.getMethodCallsFromSelf().stream()
+                    .filter(
+                        call ->
+                            "java.net.URL".equals(call.getTarget().getOwner().getName())
+                                && FORBIDDEN_URL_METHODS.contains(call.getTarget().getName()))
+                    .forEach(
+                        call ->
+                            events.add(
+                                SimpleConditionEvent.violated(
+                                    clazz,
+                                    clazz.getDescription()
+                                        + " calls URL."
+                                        + call.getTarget().getName()
+                                        + "() — use OkHttp instead")));
+              }
+            })
+        .as("URLConnection must not be used — use OkHttp instead");
+  }
+
+  /**
+   * Every class that constructs an {@code OkHttpClient.Builder} must explicitly call {@code
+   * connectTimeout}, {@code readTimeout}, and {@code writeTimeout} on it.
+   *
+   * <p>This prevents accidental use of OkHttp's built-in defaults and ensures every HTTP connection
+   * has intentional timeout values (including {@code Duration.ZERO} for streaming connections where
+   * no timeout is desired).
+   */
+  public static ArchRule okHttpClientsMustHaveTimeouts() {
+    return classes()
+        .should(
+            new ArchCondition<JavaClass>(
+                "configure connectTimeout, readTimeout, and writeTimeout on every OkHttpClient"
+                    + " Builder") {
+              private static final String BUILDER = "okhttp3.OkHttpClient$Builder";
+              private static final Set<String> REQUIRED =
+                  Set.of("connectTimeout", "readTimeout", "writeTimeout");
+
+              @Override
+              public void check(final JavaClass clazz, final ConditionEvents events) {
+                boolean buildsClient =
+                    clazz.getConstructorCallsFromSelf().stream()
+                        .anyMatch(call -> BUILDER.equals(call.getTarget().getOwner().getName()));
+                if (!buildsClient) {
+                  events.add(
+                      SimpleConditionEvent.satisfied(
+                          clazz, clazz.getDescription() + " does not build OkHttpClient"));
+                  return;
+                }
+
+                Set<String> called =
+                    clazz.getMethodCallsFromSelf().stream()
+                        .filter(call -> BUILDER.equals(call.getTarget().getOwner().getName()))
+                        .map(call -> call.getTarget().getName())
+                        .collect(Collectors.toSet());
+
+                Set<String> missing =
+                    REQUIRED.stream().filter(m -> !called.contains(m)).collect(Collectors.toSet());
+
+                if (missing.isEmpty()) {
+                  events.add(
+                      SimpleConditionEvent.satisfied(
+                          clazz, clazz.getDescription() + " configures all OkHttpClient timeouts"));
+                } else {
+                  events.add(
+                      SimpleConditionEvent.violated(
+                          clazz,
+                          clazz.getDescription()
+                              + " builds OkHttpClient but does not set: "
+                              + missing));
+                }
+              }
+            })
+        .as(
+            "OkHttpClient.Builder must configure connectTimeout, readTimeout, and writeTimeout"
+                + " — use Duration.ZERO for intentionally unbounded connections");
+  }
+
   // ── Convenience ──────────────────────────────────────────────────────────
 
   /**
@@ -238,6 +350,8 @@ public final class OnionArchitectureRules {
       domainModelClassesMustBeEntityOrAttribute(basePackage),
       entityFieldsMustBeDomainAttributes(),
       restEndpointsMustNotExposeDomainTypes(basePackage),
+      noUrlConnectionUsage(),
+      okHttpClientsMustHaveTimeouts(),
     };
   }
 }
