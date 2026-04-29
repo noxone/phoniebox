@@ -16,8 +16,8 @@ jobs:
       matrix:
         jdk:
           - { distribution: graalvm, version: 21 }
-          - { distribution: temurin,  version: 21 }
           - { distribution: adopt-hotspot,  version: 21 }
+          - { distribution: semeru,  version: 21 }
 
     steps:
       - name: Checkout
