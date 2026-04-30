@@ -1,7 +1,7 @@
 package eu.noxone.phoniebox.app.audio;
 
-import eu.noxone.phoniebox.app.http.HttpClientProvider;
 import eu.noxone.phoniebox.audio.application.port.out.AudioStreamPort;
+import eu.noxone.phoniebox.http.HttpClientProvider;
 import eu.noxone.phoniebox.media.application.port.out.AudioStreamRepository;
 import eu.noxone.phoniebox.media.application.port.out.FileStoragePort;
 import eu.noxone.phoniebox.media.domain.model.audiostream.AudioStream;

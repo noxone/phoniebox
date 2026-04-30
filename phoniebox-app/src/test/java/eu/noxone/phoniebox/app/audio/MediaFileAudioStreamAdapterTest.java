@@ -8,7 +8,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
-import eu.noxone.phoniebox.app.http.HttpClientProvider;
+import eu.noxone.phoniebox.http.HttpClientProvider;
 import eu.noxone.phoniebox.media.application.port.out.AudioStreamRepository;
 import eu.noxone.phoniebox.media.application.port.out.FileStoragePort;
 import eu.noxone.phoniebox.media.domain.model.audiostream.AudioStream;

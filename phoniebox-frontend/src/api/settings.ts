@@ -1,5 +1,6 @@
 const SETTINGS_BASE = '/api/settings'
 const SOUND_CARDS_BASE = '/api/audio/sound-cards'
+const HTTP_TIMEOUTS_BASE = '/api/http/timeouts'
 
 // ── Generic settings ─────────────────────────────────────────────────────────
 
@@ -46,5 +47,29 @@ export async function selectSoundCard(mixerName: string | null): Promise<SoundCa
     body: JSON.stringify({ mixerName }),
   })
   if (!res.ok) throw new Error(`Sound cards API error: ${res.status}`)
+  return res.json()
+}
+
+// ── HTTP timeouts ─────────────────────────────────────────────────────────────
+
+export interface HttpTimeouts {
+  connectTimeoutSeconds: number
+  readTimeoutSeconds: number
+  writeTimeoutSeconds: number
+}
+
+export async function getHttpTimeouts(): Promise<HttpTimeouts> {
+  const res = await fetch(HTTP_TIMEOUTS_BASE)
+  if (!res.ok) throw new Error(`HTTP timeouts API error: ${res.status}`)
+  return res.json()
+}
+
+export async function setHttpTimeouts(timeouts: HttpTimeouts): Promise<HttpTimeouts> {
+  const res = await fetch(HTTP_TIMEOUTS_BASE, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(timeouts),
+  })
+  if (!res.ok) throw new Error(`HTTP timeouts API error: ${res.status}`)
   return res.json()
 }

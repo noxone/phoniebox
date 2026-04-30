@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>eu.noxone.phoniebox</groupId>
+    <artifactId>phoniebox-parent</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>phoniebox-http</artifactId>
+  <name>Phoniebox :: HTTP Client</name>
+
+  <!-- Shared OkHttp client with settings-backed timeout configuration.
+       Every feature module that makes outbound HTTP requests must declare
+       this module as a dependency instead of wiring OkHttp directly. -->
+
+  <dependencies>
+    <!-- OkHttp – the only permitted HTTP client in this project -->
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+    </dependency>
+
+    <!-- Settings – provides GetSettingUseCase / SetSettingUseCase -->
+    <dependency>
+      <groupId>eu.noxone.phoniebox</groupId>
+      <artifactId>phoniebox-settings</artifactId>
+    </dependency>
+
+    <!-- CDI -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-arc</artifactId>
+    </dependency>
+
+    <!-- REST layer (HttpTimeoutResource) -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-rest-jackson</artifactId>
+    </dependency>
+  </dependencies>
+</project>

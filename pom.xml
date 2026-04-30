@@ -18,6 +18,7 @@
     <module>phoniebox-audio</module>
     <module>phoniebox-gpio</module>
     <module>phoniebox-playlist</module>
+    <module>phoniebox-http</module>
     <module>phoniebox-frontend</module>
     <module>phoniebox-app</module>
   </modules>
@@ -118,6 +119,11 @@
       <dependency>
         <groupId>eu.noxone.phoniebox</groupId>
         <artifactId>phoniebox-playlist</artifactId>
+        <version>${phoniebox.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>eu.noxone.phoniebox</groupId>
+        <artifactId>phoniebox-http</artifactId>
         <version>${phoniebox.version}</version>
       </dependency>
     </dependencies>

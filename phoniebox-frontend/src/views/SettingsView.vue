@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { listSoundCards, selectSoundCard, type SoundCard } from '@/api/settings'
+import {
+  listSoundCards,
+  selectSoundCard,
+  getHttpTimeouts,
+  setHttpTimeouts,
+  type SoundCard,
+  type HttpTimeouts,
+} from '@/api/settings'
 
 const soundCards = ref<SoundCard[]>([])
 const loading    = ref(false)
@@ -34,7 +41,42 @@ async function select(mixerName: string | null) {
 
 const selectedName = () => soundCards.value.find(c => c.selected)?.name ?? null
 
-onMounted(load)
+// ── HTTP timeouts ─────────────────────────────────────────────────────────────
+
+const timeouts     = ref<HttpTimeouts>({ connectTimeoutSeconds: 10, readTimeoutSeconds: 30, writeTimeoutSeconds: 10 })
+const timeoutsLoading = ref(false)
+const timeoutsSaving  = ref(false)
+const timeoutsError   = ref<string | null>(null)
+
+async function loadTimeouts() {
+  timeoutsLoading.value = true
+  timeoutsError.value = null
+  try {
+    timeouts.value = await getHttpTimeouts()
+  } catch (e) {
+    timeoutsError.value = String(e)
+  } finally {
+    timeoutsLoading.value = false
+  }
+}
+
+async function saveTimeouts() {
+  if (timeoutsSaving.value) return
+  timeoutsSaving.value = true
+  timeoutsError.value = null
+  try {
+    timeouts.value = await setHttpTimeouts(timeouts.value)
+  } catch (e) {
+    timeoutsError.value = String(e)
+  } finally {
+    timeoutsSaving.value = false
+  }
+}
+
+onMounted(() => {
+  load()
+  loadTimeouts()
+})
 </script>
 
 <template>
@@ -102,6 +144,67 @@ onMounted(load)
           <p v-if="soundCards.length === 0" class="text-sm text-gray-500 py-2">
             No additional output devices detected.
           </p>
+        </div>
+      </section>
+
+      <!-- Network timeouts -->
+      <section class="p-5 bg-gray-900 border border-gray-700 rounded-xl">
+        <h3 class="text-base font-medium text-gray-200 mb-1">Network timeouts</h3>
+        <p class="text-xs text-gray-500 mb-4">
+          Timeout values (in seconds) for outgoing HTTP connections used to fetch audio streams.
+          Changes take effect with the next connection.
+        </p>
+
+        <p v-if="timeoutsError" class="mb-3 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
+          {{ timeoutsError }}
+        </p>
+
+        <div v-if="timeoutsLoading" class="text-gray-400 text-sm">Loading…</div>
+
+        <div v-else class="space-y-4">
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Connect timeout (s)</label>
+              <input
+                v-model.number="timeouts.connectTimeoutSeconds"
+                type="number"
+                min="1"
+                max="300"
+                :disabled="timeoutsSaving"
+                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Read timeout (s)</label>
+              <input
+                v-model.number="timeouts.readTimeoutSeconds"
+                type="number"
+                min="1"
+                max="300"
+                :disabled="timeoutsSaving"
+                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-400 mb-1">Write timeout (s)</label>
+              <input
+                v-model.number="timeouts.writeTimeoutSeconds"
+                type="number"
+                min="1"
+                max="300"
+                :disabled="timeoutsSaving"
+                class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+              />
+            </div>
+          </div>
+
+          <button
+            :disabled="timeoutsSaving"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            @click="saveTimeouts"
+          >
+            {{ timeoutsSaving ? 'Saving…' : 'Save timeouts' }}
+          </button>
         </div>
       </section>
     </div>

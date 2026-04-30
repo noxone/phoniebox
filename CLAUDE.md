@@ -56,6 +56,8 @@ This is a **Maven multi-module Quarkus application** with a **Vue 3 SPA frontend
 | `phoniebox-audio` | Audio playback via `javax.sound.sampled` |
 | `phoniebox-gpio` | Placeholder — future pi4j GPIO/button control |
 | `phoniebox-playlist` | Placeholder — future playlist management |
+| `phoniebox-settings` | Generic key/value settings persistence; exposes `GetSettingUseCase` / `SetSettingUseCase` |
+| `phoniebox-http` | Shared OkHttp client (`HttpClientProvider`) with settings-backed timeout configuration; exposes `GET/PUT /api/http/timeouts`. **Every module that makes outbound HTTP requests must depend on this module instead of wiring OkHttp directly.** |
 | `phoniebox-app` | **Only runnable module.** Assembles all feature modules, configures SQLite + Flyway, serves the built Vue SPA as static files |
 | `phoniebox-frontend` | Vue 3 + TypeScript SPA; built by Maven via `frontend-maven-plugin` |
 
@@ -229,7 +231,7 @@ Consequences:
 ### Tech Stack
 
 - **Java 21**, Quarkus 3.22.3 (`quarkus-rest`, `quarkus-hibernate-orm-panache`, `quarkus-flyway`, `quarkus-jdbc-sqlite`)
-- **OkHttp 4.12.0** — the only permitted HTTP client. `java.net.URLConnection`, `URL.openStream()`, and `URL.openConnection()` are banned by ArchUnit rule. Every `OkHttpClient.Builder` must explicitly call `connectTimeout`, `readTimeout`, and `writeTimeout` (use `Duration.ZERO` for intentionally unbounded streaming connections).
+- **OkHttp 4.12.0** — the only permitted HTTP client. `java.net.URLConnection`, `URL.openStream()`, and `URL.openConnection()` are banned by ArchUnit rule. Every `OkHttpClient.Builder` must explicitly call `connectTimeout`, `readTimeout`, and `writeTimeout` (use `Duration.ZERO` for intentionally unbounded streaming connections). All modules that make outbound HTTP requests must depend on `phoniebox-http` and inject `HttpClientProvider` instead of constructing `OkHttpClient` directly.
 - **Vue 3.4**, Vue Router 4.3, TypeScript 5.4, Vite 5.2, Tailwind CSS 3.4
 - **Node v20.11.0 / npm 10.4.0** (pinned via `frontend-maven-plugin`)
 - **ArchUnit 1.3.0** for architecture compliance, **JUnit 5** + **REST Assured** for testing
