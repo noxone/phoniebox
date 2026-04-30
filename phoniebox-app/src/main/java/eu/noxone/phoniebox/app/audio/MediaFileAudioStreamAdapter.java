@@ -13,13 +13,15 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.UUID;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 /**
  * Wires the audio module's {@link AudioStreamPort} to the media and stream sources.
@@ -28,7 +30,8 @@ import okhttp3.Response;
  *
  * <ul>
  *   <li>{@code MEDIA_FILE} — reads bytes from the local file system via {@link FileStoragePort}
- *   <li>{@code AUDIO_STREAM} — opens a live HTTP connection to the stream URL via OkHttp
+ *   <li>{@code AUDIO_STREAM} — opens a live HTTP connection to the stream URL via {@link
+ *       HttpClient}
  * </ul>
  */
 @ApplicationScoped
@@ -37,12 +40,8 @@ public class MediaFileAudioStreamAdapter implements AudioStreamPort {
   private static final String KIND_MEDIA_FILE = "MEDIA_FILE";
   private static final String KIND_AUDIO_STREAM = "AUDIO_STREAM";
 
-  private static final OkHttpClient HTTP_CLIENT =
-      new OkHttpClient.Builder()
-          .connectTimeout(Duration.ofSeconds(10))
-          .readTimeout(Duration.ofSeconds(30))
-          .writeTimeout(Duration.ofSeconds(10))
-          .build();
+  private static final HttpClient HTTP_CLIENT =
+      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
   private final FileStoragePort storage;
   private final AudioStreamRepository audioStreamRepository;
@@ -73,13 +72,17 @@ public class MediaFileAudioStreamAdapter implements AudioStreamPort {
             .findById(AudioStreamId.of(id))
             .orElseThrow(() -> new IOException("Audio stream not found: " + id));
     String url = resolvePlaylistUrl(stream.getUrl().getValue());
-    Request request = new Request.Builder().url(url).build();
-    Response response = HTTP_CLIENT.newCall(request).execute();
-    if (!response.isSuccessful()) {
-      response.close();
-      throw new IOException("HTTP " + response.code() + " opening stream: " + url);
+    return fetchStream(url);
+  }
+
+  private InputStream fetchStream(final String url) throws IOException {
+    HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
+    HttpResponse<InputStream> response = send(request, BodyHandlers.ofInputStream());
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+      response.body().close();
+      throw new IOException("HTTP " + response.statusCode() + " opening stream: " + url);
     }
-    return response.body().byteStream();
+    return response.body();
   }
 
   private String resolvePlaylistUrl(final String url) throws IOException {
@@ -100,15 +103,28 @@ public class MediaFileAudioStreamAdapter implements AudioStreamPort {
 
   private String fetchFirstUrlFromPlaylist(final String playlistUrl, final boolean isPls)
       throws IOException {
-    Request request = new Request.Builder().url(playlistUrl).build();
-    try (Response response = HTTP_CLIENT.newCall(request).execute()) {
-      if (!response.isSuccessful()) {
-        throw new IOException("HTTP " + response.code() + " fetching playlist: " + playlistUrl);
-      }
-      String content = response.body().string();
-      try (var reader = new BufferedReader(new StringReader(content))) {
-        return isPls ? parsePls(reader) : parseM3u(reader);
-      }
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(playlistUrl))
+            .timeout(Duration.ofSeconds(10))
+            .GET()
+            .build();
+    HttpResponse<String> response = send(request, BodyHandlers.ofString());
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+      throw new IOException("HTTP " + response.statusCode() + " fetching playlist: " + playlistUrl);
+    }
+    try (var reader = new BufferedReader(new StringReader(response.body()))) {
+      return isPls ? parsePls(reader) : parseM3u(reader);
+    }
+  }
+
+  private <T> HttpResponse<T> send(
+      final HttpRequest request, final HttpResponse.BodyHandler<T> handler) throws IOException {
+    try {
+      return HTTP_CLIENT.send(request, handler);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Interrupted: " + request.uri(), e);
     }
   }
 
