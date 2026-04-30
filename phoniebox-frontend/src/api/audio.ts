@@ -39,3 +39,23 @@ export async function pausePlayback(): Promise<PlaybackState> {
 export async function stopPlayback(): Promise<PlaybackState> {
   return post('/stop')
 }
+
+const VOLUME_BASE = '/api/audio/volume'
+
+export async function getVolume(): Promise<number> {
+  const res = await fetch(VOLUME_BASE)
+  if (!res.ok) throw new Error(`Audio API error: ${res.status}`)
+  const data: { volume: number } = await res.json()
+  return data.volume
+}
+
+export async function setVolume(volume: number): Promise<number> {
+  const res = await fetch(VOLUME_BASE, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ volume }),
+  })
+  if (!res.ok) throw new Error(`Audio API error: ${res.status}`)
+  const data: { volume: number } = await res.json()
+  return data.volume
+}

@@ -1,0 +1,4 @@
+# do not check in generated files
+index.html
+META-INF/resources/assets/*.css
+META-INF/resources/assets/*.js

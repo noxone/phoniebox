@@ -4,10 +4,14 @@ import eu.noxone.phoniebox.audio.application.AudioPlaybackException;
 import eu.noxone.phoniebox.audio.application.AudioSettingKeys;
 import eu.noxone.phoniebox.audio.application.PlaybackState;
 import eu.noxone.phoniebox.audio.application.PlaybackStatus;
+import eu.noxone.phoniebox.audio.application.port.in.GetVolumeUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.PlayAudioUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.PlaybackControlUseCase;
+import eu.noxone.phoniebox.audio.application.port.in.SetVolumeUseCase;
 import eu.noxone.phoniebox.audio.application.port.out.AudioStreamPort;
 import eu.noxone.phoniebox.settings.application.port.in.GetSettingUseCase;
+import eu.noxone.phoniebox.settings.application.port.in.SetSettingCommand;
+import eu.noxone.phoniebox.settings.application.port.in.SetSettingUseCase;
 import eu.noxone.phoniebox.shared.domain.Playable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -22,6 +26,7 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.DataLine;
+import javax.sound.sampled.FloatControl;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
@@ -43,21 +48,29 @@ import org.eclipse.microprofile.context.ManagedExecutor;
  *
  * <p>Supported formats: WAV/AIFF/AU (JDK native) + MP3 (via mp3spi SPI on the classpath). Any
  * compressed format is transparently decoded to PCM.
+ *
+ * <p>Volume is applied via {@link FloatControl.Type#MASTER_GAIN} when the hardware supports it,
+ * falling back to {@link FloatControl.Type#VOLUME}. If neither control is available a warning is
+ * logged and the hardware's default level is used.
  */
 @ApplicationScoped
-public class AudioApplicationService implements PlayAudioUseCase, PlaybackControlUseCase {
+public class AudioApplicationService
+    implements PlayAudioUseCase, PlaybackControlUseCase, GetVolumeUseCase, SetVolumeUseCase {
 
   private static final Logger LOG = Logger.getLogger(AudioApplicationService.class.getName());
   private static final int BUFFER_SIZE = 8 * 1024;
+  private static final int DEFAULT_VOLUME = 80;
 
   private final AudioStreamPort streamPort;
   private final GetSettingUseCase getSetting;
+  private final SetSettingUseCase setSetting;
 
   // ── All fields below are guarded by 'this' ────────────────────────────────
   private PlaybackStatus status = PlaybackStatus.IDLE;
   private String currentTrackKind;
   private UUID currentTrackId;
   private SourceDataLine activeLine;
+  private int volume;
 
   // Written under lock, read from playback thread without lock (volatile)
   private volatile boolean stopRequested;
@@ -66,9 +79,17 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
 
   @Inject
   public AudioApplicationService(
-      final AudioStreamPort streamPort, final GetSettingUseCase getSetting) {
+      final AudioStreamPort streamPort,
+      final GetSettingUseCase getSetting,
+      final SetSettingUseCase setSetting) {
     this.streamPort = streamPort;
     this.getSetting = getSetting;
+    this.setSetting = setSetting;
+    this.volume =
+        getSetting
+            .getSetting(AudioSettingKeys.VOLUME)
+            .map(Integer::parseInt)
+            .orElse(DEFAULT_VOLUME);
   }
 
   // ── PlayAudioUseCase ──────────────────────────────────────────────────────
@@ -132,6 +153,26 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
     return snapshot();
   }
 
+  // ── GetVolumeUseCase / SetVolumeUseCase ───────────────────────────────────
+
+  @Override
+  public synchronized int getVolume() {
+    return volume;
+  }
+
+  @Override
+  public synchronized void setVolume(final int newVolume) {
+    if (newVolume < 0 || newVolume > 100) {
+      throw new IllegalArgumentException("Volume must be between 0 and 100, was: " + newVolume);
+    }
+    volume = newVolume;
+    setSetting.setSetting(
+        new SetSettingCommand(AudioSettingKeys.VOLUME, String.valueOf(newVolume)));
+    if (activeLine != null) {
+      applyVolume(activeLine, volume);
+    }
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   private PlaybackState snapshot() {
@@ -168,10 +209,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
   // ── Playback thread ───────────────────────────────────────────────────────
 
   private void runPlayback(
-      final String kind, final UUID trackId, InputStream stream, final String mixerName) {
-    if (!(stream instanceof BufferedInputStream)) {
-      stream = new BufferedInputStream(stream);
-    }
+      final String kind, final UUID trackId, final InputStream stream, final String mixerName) {
     SourceDataLine line = null;
     try (var raw = stream;
         var audio = decoded(AudioSystem.getAudioInputStream(new BufferedInputStream(raw)))) {
@@ -189,6 +227,7 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
           return;
         }
         activeLine = line;
+        applyVolume(line, volume);
         line.start();
       }
 
@@ -237,6 +276,25 @@ public class AudioApplicationService implements PlayAudioUseCase, PlaybackContro
       }
     }
     return (SourceDataLine) AudioSystem.getLine(lineInfo);
+  }
+
+  /**
+   * Applies {@code volume} (0–100) to the line via hardware controls. Tries {@code MASTER_GAIN}
+   * (dB) first, then linear {@code VOLUME}. Logs a warning if neither control is available.
+   */
+  private static void applyVolume(final SourceDataLine line, final int volume) {
+    if (line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+      var ctrl = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
+      float dB = volume == 0 ? ctrl.getMinimum() : 20f * (float) Math.log10(volume / 100.0);
+      ctrl.setValue(Math.max(ctrl.getMinimum(), Math.min(ctrl.getMaximum(), dB)));
+      return;
+    }
+    if (line.isControlSupported(FloatControl.Type.VOLUME)) {
+      var ctrl = (FloatControl) line.getControl(FloatControl.Type.VOLUME);
+      ctrl.setValue(Math.max(0f, Math.min(1f, volume / 100f)));
+      return;
+    }
+    LOG.warning("No hardware volume control available on the current audio line");
   }
 
   /**

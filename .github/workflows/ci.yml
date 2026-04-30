@@ -31,4 +31,4 @@ jobs:
           cache: maven
 
       - name: Build and test
-        run: mvn clean verify --batch-mode --no-transfer-progress
+        run: mvn clean verify -T1C --batch-mode --no-transfer-progress

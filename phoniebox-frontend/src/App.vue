@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPlaybackState, resumePlayback, pausePlayback, stopPlayback, type PlaybackState } from '@/api/audio'
+import { getPlaybackState, resumePlayback, pausePlayback, stopPlayback, getVolume, setVolume, type PlaybackState } from '@/api/audio'
 
 const route = useRoute()
 
@@ -13,6 +13,7 @@ const navItems = [
 
 const playback = ref<PlaybackState>({ status: 'IDLE', currentTrackKind: null, currentTrackId: null })
 const playbackBusy = ref(false)
+const volume = ref(80)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function refreshPlayback() {
@@ -45,8 +46,21 @@ async function stop() {
   }
 }
 
+async function onVolumeChange() {
+  try {
+    volume.value = await setVolume(volume.value)
+  } catch {
+    // silently ignore
+  }
+}
+
 onMounted(async () => {
   await refreshPlayback()
+  try {
+    volume.value = await getVolume()
+  } catch {
+    // silently ignore
+  }
   pollTimer = setInterval(refreshPlayback, 2000)
 })
 
@@ -78,7 +92,7 @@ onUnmounted(() => {
       </nav>
 
       <!-- Sidebar player bar -->
-      <div class="border-t border-gray-800 p-3">
+      <div class="border-t border-gray-800 p-3 space-y-2">
         <div v-if="playback.status === 'IDLE'" class="text-xs text-gray-600 text-center py-1">
           Nothing playing
         </div>
@@ -117,6 +131,30 @@ onUnmounted(() => {
               </svg>
             </button>
           </div>
+        </div>
+
+        <!-- Volume control (always visible) -->
+        <div class="flex items-center gap-1.5">
+          <svg
+            class="w-3.5 h-3.5 shrink-0 text-gray-500"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path v-if="volume === 0" d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 18l2 2L21 18.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z"/>
+            <path v-else-if="volume < 50" d="M18.5 12A4.5 4.5 0 0 0 16 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/>
+            <path v-else d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            :value="volume"
+            @input="volume = +($event.target as HTMLInputElement).value"
+            @change="onVolumeChange"
+            class="flex-1 h-1 accent-indigo-500 cursor-pointer"
+          />
+          <span class="text-xs text-gray-500 w-6 text-right tabular-nums">{{ volume }}</span>
         </div>
       </div>
     </aside>
