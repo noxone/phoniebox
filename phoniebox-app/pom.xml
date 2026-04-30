@@ -38,6 +38,12 @@
       <artifactId>phoniebox-playlist</artifactId>
     </dependency>
 
+    <!-- HTTP client -->
+    <dependency>
+      <groupId>com.squareup.okhttp3</groupId>
+      <artifactId>okhttp</artifactId>
+    </dependency>
+
     <!-- SQLite JDBC (Quarkiverse – not in the main Quarkus BOM) -->
     <dependency>
       <groupId>io.quarkiverse.jdbc</groupId>

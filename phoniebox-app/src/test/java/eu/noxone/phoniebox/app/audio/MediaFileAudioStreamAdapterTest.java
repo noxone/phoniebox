@@ -8,6 +8,7 @@ import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
+import eu.noxone.phoniebox.app.http.HttpClientProvider;
 import eu.noxone.phoniebox.media.application.port.out.AudioStreamRepository;
 import eu.noxone.phoniebox.media.application.port.out.FileStoragePort;
 import eu.noxone.phoniebox.media.domain.model.audiostream.AudioStream;
@@ -16,14 +17,17 @@ import eu.noxone.phoniebox.media.domain.model.audiostream.StreamUrl;
 import eu.noxone.phoniebox.media.domain.model.shared.MimeType;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,11 +41,18 @@ class MediaFileAudioStreamAdapterTest {
 
   private final FileStoragePort storage = mock(FileStoragePort.class);
   private final AudioStreamRepository audioStreamRepository = mock(AudioStreamRepository.class);
+  private final HttpClientProvider httpClientProvider = mock(HttpClientProvider.class);
+  private final OkHttpClient httpClient =
+      new OkHttpClient.Builder()
+          .connectTimeout(Duration.ofSeconds(5))
+          .readTimeout(Duration.ofSeconds(5))
+          .writeTimeout(Duration.ofSeconds(5))
+          .build();
   private final MediaFileAudioStreamAdapter adapter =
       new MediaFileAudioStreamAdapter(storage, audioStreamRepository);
 
   @BeforeEach
-  void startServer() throws IOException {
+  void startServer() throws IOException, ReflectiveOperationException {
     responseBodies.clear();
     responseStatuses.clear();
     server = HttpServer.create(new InetSocketAddress(0), 0);
@@ -58,12 +69,16 @@ class MediaFileAudioStreamAdapterTest {
         });
     server.start();
     baseUrl = "http://localhost:" + server.getAddress().getPort();
+    when(httpClientProvider.get()).thenReturn(httpClient);
+    Field field = MediaFileAudioStreamAdapter.class.getDeclaredField("httpClientProvider");
+    field.setAccessible(true);
+    field.set(adapter, httpClientProvider);
   }
 
   @AfterEach
   void stopServer() {
     server.stop(0);
-    reset(storage, audioStreamRepository);
+    reset(storage, audioStreamRepository, httpClientProvider);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────

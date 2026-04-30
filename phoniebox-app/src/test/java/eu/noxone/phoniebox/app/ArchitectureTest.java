@@ -25,4 +25,9 @@ class ArchitectureTest {
   void noUrlConnectionUsage() {
     OnionArchitectureRules.noUrlConnectionUsage().check(classes);
   }
+
+  @Test
+  void okHttpClientsMustHaveTimeouts() {
+    OnionArchitectureRules.okHttpClientsMustHaveTimeouts().check(classes);
+  }
 }
