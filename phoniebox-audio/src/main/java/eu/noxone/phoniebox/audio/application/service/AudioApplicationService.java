@@ -50,8 +50,10 @@ import org.eclipse.microprofile.context.ManagedExecutor;
  * compressed format is transparently decoded to PCM.
  *
  * <p>Volume is applied via {@link FloatControl.Type#MASTER_GAIN} when the hardware supports it,
- * falling back to {@link FloatControl.Type#VOLUME}. If neither control is available a warning is
- * logged and the hardware's default level is used.
+ * falling back to {@link FloatControl.Type#VOLUME}. When neither control is available (typical on
+ * Raspberry Pi ALSA output), 16-bit signed PCM samples are scaled in the write loop. The scale
+ * factor is held in {@link #softVolumeScale} (volatile) so the write loop can read it without
+ * holding the lock — the same pattern used for {@link #stopRequested}.
  */
 @ApplicationScoped
 public class AudioApplicationService
@@ -74,6 +76,7 @@ public class AudioApplicationService
 
   // Written under lock, read from playback thread without lock (volatile)
   private volatile boolean stopRequested;
+  private volatile float softVolumeScale;
 
   @Inject private ManagedExecutor executor;
 
@@ -90,6 +93,7 @@ public class AudioApplicationService
             .getSetting(AudioSettingKeys.VOLUME)
             .map(Integer::parseInt)
             .orElse(DEFAULT_VOLUME);
+    this.softVolumeScale = this.volume / 100f;
   }
 
   // ── PlayAudioUseCase ──────────────────────────────────────────────────────
@@ -166,10 +170,11 @@ public class AudioApplicationService
       throw new IllegalArgumentException("Volume must be between 0 and 100, was: " + newVolume);
     }
     volume = newVolume;
+    softVolumeScale = newVolume / 100f; // picked up by write loop on next iteration
     setSetting.setSetting(
         new SetSettingCommand(AudioSettingKeys.VOLUME, String.valueOf(newVolume)));
     if (activeLine != null) {
-      applyVolume(activeLine, volume);
+      applyVolumeHardware(activeLine, newVolume);
     }
   }
 
@@ -222,16 +227,17 @@ public class AudioApplicationService
               : (SourceDataLine) AudioSystem.getLine(lineInfo);
       line.open(format);
 
+      final boolean hardwareVolume;
       synchronized (this) {
         if (stopRequested) {
           return;
         }
         activeLine = line;
-        applyVolume(line, volume);
+        hardwareVolume = applyVolumeHardware(line, volume);
         line.start();
       }
 
-      writeLoop(audio, line);
+      writeLoop(audio, line, hardwareVolume);
 
     } catch (IOException | UnsupportedAudioFileException | LineUnavailableException e) {
       LOG.log(Level.WARNING, "Playback error for " + kind + "/" + trackId, e);
@@ -255,11 +261,15 @@ public class AudioApplicationService
     }
   }
 
-  private void writeLoop(final AudioInputStream audio, final SourceDataLine line)
+  private void writeLoop(
+      final AudioInputStream audio, final SourceDataLine line, final boolean hardwareVolume)
       throws IOException {
     final byte[] buffer = new byte[BUFFER_SIZE];
     int bytesRead;
     while (!stopRequested && (bytesRead = audio.read(buffer, 0, buffer.length)) != -1) {
+      if (!hardwareVolume) {
+        scaleSamples(buffer, bytesRead, softVolumeScale);
+      }
       line.write(buffer, 0, bytesRead);
     }
   }
@@ -279,22 +289,39 @@ public class AudioApplicationService
   }
 
   /**
-   * Applies {@code volume} (0–100) to the line via hardware controls. Tries {@code MASTER_GAIN}
-   * (dB) first, then linear {@code VOLUME}. Logs a warning if neither control is available.
+   * Attempts to apply {@code volume} (0–100) via hardware controls on the line. Returns {@code
+   * true} if a hardware control was found and set; {@code false} if software scaling must be used.
    */
-  private static void applyVolume(final SourceDataLine line, final int volume) {
+  private static boolean applyVolumeHardware(final SourceDataLine line, final int volume) {
     if (line.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
       var ctrl = (FloatControl) line.getControl(FloatControl.Type.MASTER_GAIN);
       float dB = volume == 0 ? ctrl.getMinimum() : 20f * (float) Math.log10(volume / 100.0);
       ctrl.setValue(Math.max(ctrl.getMinimum(), Math.min(ctrl.getMaximum(), dB)));
-      return;
+      return true;
     }
     if (line.isControlSupported(FloatControl.Type.VOLUME)) {
       var ctrl = (FloatControl) line.getControl(FloatControl.Type.VOLUME);
       ctrl.setValue(Math.max(0f, Math.min(1f, volume / 100f)));
-      return;
+      return true;
     }
-    LOG.warning("No hardware volume control available on the current audio line");
+    LOG.fine("No hardware volume control; using software sample scaling");
+    return false;
+  }
+
+  /**
+   * Scales 16-bit signed little-endian PCM samples in-place by {@code scale}. At full volume (scale
+   * == 1.0) the buffer is left untouched.
+   */
+  private static void scaleSamples(final byte[] buf, final int len, final float scale) {
+    if (scale == 1.0f) return;
+    for (int i = 0; i + 1 < len; i += 2) {
+      int sample = (buf[i + 1] << 8) | (buf[i] & 0xFF);
+      sample = Math.round(sample * scale);
+      if (sample > 32767) sample = 32767;
+      else if (sample < -32768) sample = -32768;
+      buf[i] = (byte) (sample & 0xFF);
+      buf[i + 1] = (byte) (sample >> 8);
+    }
   }
 
   /**
