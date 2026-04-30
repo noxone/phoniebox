@@ -73,6 +73,77 @@ web/           → REST endpoints and DTOs. Calls application layer only, never 
 
 Layer rules are defined in `phoniebox-arch` and applied as ArchUnit tests. Violating them will cause test failures.
 
+### Package Placement Guide
+
+Use this as a decision tree when adding a new class to a feature module (e.g. `phoniebox-media`). The allowed dependency direction is: `web` → `application` → `domain`. `infrastructure` implements ports defined in `application`. Nothing points outward from `domain`.
+
+#### `domain/model/`
+
+Place a class here if it represents a concept that exists purely in the business domain, with no framework dependency beyond `jakarta.persistence.*` annotations.
+
+| What | How | Examples |
+|------|-----|---------|
+| Aggregate root / entity | extend `DefaultDomainEntity<ID>` | `MediaFile`, `AudioStream` |
+| Entity ID | extend `AbstractId` (which extends `DefaultDomainAttribute<UUID>`) | `MediaFileId`, `AudioStreamId` |
+| Single-value attribute / value object | extend `DefaultDomainAttribute<T>` | `OriginalFileName`, `StreamUrl`, `MimeType` |
+| Compound value object | implement `DomainAttribute` directly, keep internal fields as `DomainAttribute` sub-types | `MediaFileMetadata`, `AudioMetadata` |
+
+**Do not place here**: use cases, ports, framework services, Panache calls, or anything that depends on `application`, `infrastructure`, or `web`.
+
+#### `application/port/in/`
+
+Place a class here if it defines *what* the application can do — the inbound API that the `web` layer calls.
+
+- **Use case interfaces** — one interface per operation, named `<Verb><Noun>UseCase` (e.g. `UploadMediaFileUseCase`, `AddAudioStreamUseCase`)
+- **Command objects** — input data carriers passed into use cases (e.g. `UploadMediaFileCommand`, `AddAudioStreamCommand`); plain Java records or classes, no framework deps
+
+#### `application/port/out/`
+
+Place an interface here if the application layer needs something from the outside world (persistence, filesystem, external API). These are *outbound* ports — defined here, implemented in `infrastructure/`.
+
+- Repository interfaces (e.g. `MediaFileRepository`, `AudioStreamRepository`)
+- External service contracts (e.g. `FileStoragePort`, `AudioMetadataExtractor`)
+
+#### `application/service/`
+
+Place a class here if it orchestrates domain objects and outbound ports to fulfil a use case. These classes implement the `port/in/` interfaces and inject `port/out/` interfaces.
+
+- Named `<Feature>ApplicationService` (e.g. `MediaFileApplicationService`)
+- `@ApplicationScoped` CDI bean; injects only domain types and `port/out/` interfaces — never infrastructure adapters directly
+
+#### `infrastructure/persistence/`
+
+Place a class here if it touches the database.
+
+| What | How | Examples |
+|------|-----|---------|
+| Panache repository base | bare `PanacheRepositoryBase<Entity, ID>` implementation, no extra methods | `MediaFilePanacheRepository` |
+| Repository adapter | implements the `port/out/` interface by delegating to the Panache repo | `MediaFileRepositoryAdapter` |
+| JPA attribute converter | `@Converter(autoApply=true)`, extends `ReflectiveDomainAttributeConverter` (same type) or `DomainAttributeConverter` (type conversion) | `MimeTypeConverter`, `UploadedAtConverter` |
+| Hibernate UserType | for `@Id` fields only — JPA forbids `AttributeConverter` on identifiers | `MediaFileIdUserType` |
+| `package-info.java` | carries `@TypeRegistration` for UserTypes | `persistence/package-info.java` |
+
+The two-class split (Panache repo + adapter) avoids method-name conflicts between Panache's generated API and the port interface.
+
+#### `infrastructure/<other>/`
+
+Use a sub-package name that matches the external system. Place adapters that implement `port/out/` interfaces against non-database external systems.
+
+- `infrastructure/storage/` — filesystem adapters (e.g. `LocalFileStorageAdapter` implements `FileStoragePort`)
+- `infrastructure/audio/` — audio-library adapters (e.g. `JaudiotaggerAudioMetadataExtractor` implements `AudioMetadataExtractor`)
+
+#### `web/rest/`
+
+Place a class here if it is part of the HTTP API surface.
+
+| What | How | Examples |
+|------|-----|---------|
+| JAX-RS resource | `@Path`-annotated class; injects `port/in/` use case interfaces only — never adapters or Panache repos | `MediaFileResource`, `AudioStreamResource` |
+| Response DTO | plain class/record serialised to JSON; constructed from domain objects inside the resource | `MediaFileResponse`, `AudioStreamResponse` |
+| Request DTO | deserialised from the request body | `AddAudioStreamRequest`, `UpdateTagsRequest` |
+
+Resource methods must not accept or return `DomainEntity` or `DomainAttribute` types — map to/from DTOs explicitly. This is enforced by ArchUnit.
+
 ### Key Patterns
 
 - **Use case interfaces** (e.g. `UploadMediaFileUseCase`) defined in `application/`, implemented by an `ApplicationService`, injected into `web/` resources.
