@@ -8,6 +8,7 @@ import {
   type SoundCard,
   type HttpTimeouts,
 } from '@/api/settings'
+import { getMaxVolume, setMaxVolume } from '@/api/audio'
 
 const soundCards = ref<SoundCard[]>([])
 const loading    = ref(false)
@@ -73,9 +74,37 @@ async function saveTimeouts() {
   }
 }
 
+// ── Max volume ────────────────────────────────────────────────────────────────
+
+const maxVolume       = ref(100)
+const maxVolumeSaving = ref(false)
+const maxVolumeError  = ref<string | null>(null)
+
+async function loadMaxVolume() {
+  try {
+    maxVolume.value = await getMaxVolume()
+  } catch (e) {
+    maxVolumeError.value = String(e)
+  }
+}
+
+async function saveMaxVolume() {
+  if (maxVolumeSaving.value) return
+  maxVolumeSaving.value = true
+  maxVolumeError.value = null
+  try {
+    maxVolume.value = await setMaxVolume(maxVolume.value)
+  } catch (e) {
+    maxVolumeError.value = String(e)
+  } finally {
+    maxVolumeSaving.value = false
+  }
+}
+
 onMounted(() => {
   load()
   loadTimeouts()
+  loadMaxVolume()
 })
 </script>
 
@@ -144,6 +173,38 @@ onMounted(() => {
           <p v-if="soundCards.length === 0" class="text-sm text-gray-500 py-2">
             No additional output devices detected.
           </p>
+        </div>
+      </section>
+
+      <!-- Max volume -->
+      <section class="p-5 bg-gray-900 border border-gray-700 rounded-xl">
+        <h3 class="text-base font-medium text-gray-200 mb-1">Maximum volume</h3>
+        <p class="text-xs text-gray-500 mb-4">
+          Caps the volume slider so it cannot exceed this level. Useful for protecting speakers or
+          limiting loudness for children. Changes take effect immediately.
+        </p>
+
+        <p v-if="maxVolumeError" class="mb-3 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
+          {{ maxVolumeError }}
+        </p>
+
+        <div class="flex items-center gap-3">
+          <input
+            type="range"
+            min="0"
+            max="100"
+            v-model.number="maxVolume"
+            :disabled="maxVolumeSaving"
+            class="flex-1 h-1 accent-indigo-500 cursor-pointer disabled:opacity-50"
+          />
+          <span class="text-sm text-gray-300 tabular-nums w-8 text-right">{{ maxVolume }}</span>
+          <button
+            :disabled="maxVolumeSaving"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+            @click="saveMaxVolume"
+          >
+            {{ maxVolumeSaving ? 'Saving…' : 'Save' }}
+          </button>
         </div>
       </section>
 

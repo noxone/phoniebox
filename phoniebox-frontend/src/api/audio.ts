@@ -59,3 +59,23 @@ export async function setVolume(volume: number): Promise<number> {
   const data: { volume: number } = await res.json()
   return data.volume
 }
+
+const MAX_VOLUME_BASE = '/api/audio/max-volume'
+
+export async function getMaxVolume(): Promise<number> {
+  const res = await fetch(MAX_VOLUME_BASE)
+  if (!res.ok) throw new Error(`Audio API error: ${res.status}`)
+  const data: { maxVolume: number } = await res.json()
+  return data.maxVolume
+}
+
+export async function setMaxVolume(maxVolume: number): Promise<number> {
+  const res = await fetch(MAX_VOLUME_BASE, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ maxVolume }),
+  })
+  if (!res.ok) throw new Error(`Audio API error: ${res.status}`)
+  const data: { maxVolume: number } = await res.json()
+  return data.maxVolume
+}

@@ -4,9 +4,11 @@ import eu.noxone.phoniebox.audio.application.AudioPlaybackException;
 import eu.noxone.phoniebox.audio.application.AudioSettingKeys;
 import eu.noxone.phoniebox.audio.application.PlaybackState;
 import eu.noxone.phoniebox.audio.application.PlaybackStatus;
+import eu.noxone.phoniebox.audio.application.port.in.GetMaxVolumeUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.GetVolumeUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.PlayAudioUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.PlaybackControlUseCase;
+import eu.noxone.phoniebox.audio.application.port.in.SetMaxVolumeUseCase;
 import eu.noxone.phoniebox.audio.application.port.in.SetVolumeUseCase;
 import eu.noxone.phoniebox.audio.application.port.out.AudioStreamPort;
 import eu.noxone.phoniebox.settings.application.port.in.GetSettingUseCase;
@@ -57,11 +59,17 @@ import org.eclipse.microprofile.context.ManagedExecutor;
  */
 @ApplicationScoped
 public class AudioApplicationService
-    implements PlayAudioUseCase, PlaybackControlUseCase, GetVolumeUseCase, SetVolumeUseCase {
+    implements PlayAudioUseCase,
+        PlaybackControlUseCase,
+        GetVolumeUseCase,
+        SetVolumeUseCase,
+        GetMaxVolumeUseCase,
+        SetMaxVolumeUseCase {
 
   private static final Logger LOG = Logger.getLogger(AudioApplicationService.class.getName());
   private static final int BUFFER_SIZE = 8 * 1024;
   private static final int DEFAULT_VOLUME = 80;
+  private static final int DEFAULT_MAX_VOLUME = 100;
 
   private final AudioStreamPort streamPort;
   private final GetSettingUseCase getSetting;
@@ -72,6 +80,7 @@ public class AudioApplicationService
   private String currentTrackKind;
   private UUID currentTrackId;
   private SourceDataLine activeLine;
+  private int maxVolume;
   private int volume;
 
   // Written under lock, read from playback thread without lock (volatile)
@@ -88,11 +97,18 @@ public class AudioApplicationService
     this.streamPort = streamPort;
     this.getSetting = getSetting;
     this.setSetting = setSetting;
-    this.volume =
+    this.maxVolume =
         getSetting
-            .getSetting(AudioSettingKeys.VOLUME)
+            .getSetting(AudioSettingKeys.MAX_VOLUME)
             .map(Integer::parseInt)
-            .orElse(DEFAULT_VOLUME);
+            .orElse(DEFAULT_MAX_VOLUME);
+    this.volume =
+        Math.min(
+            getSetting
+                .getSetting(AudioSettingKeys.VOLUME)
+                .map(Integer::parseInt)
+                .orElse(DEFAULT_VOLUME),
+            this.maxVolume);
     this.softVolumeScale = this.volume / 100f;
   }
 
@@ -169,6 +185,31 @@ public class AudioApplicationService
     if (newVolume < 0 || newVolume > 100) {
       throw new IllegalArgumentException("Volume must be between 0 and 100, was: " + newVolume);
     }
+    applyVolumeSetting(Math.min(newVolume, maxVolume));
+  }
+
+  // ── GetMaxVolumeUseCase / SetMaxVolumeUseCase ─────────────────────────────
+
+  @Override
+  public synchronized int getMaxVolume() {
+    return maxVolume;
+  }
+
+  @Override
+  public synchronized void setMaxVolume(final int newMaxVolume) {
+    if (newMaxVolume < 0 || newMaxVolume > 100) {
+      throw new IllegalArgumentException(
+          "Max volume must be between 0 and 100, was: " + newMaxVolume);
+    }
+    maxVolume = newMaxVolume;
+    setSetting.setSetting(
+        new SetSettingCommand(AudioSettingKeys.MAX_VOLUME, String.valueOf(newMaxVolume)));
+    if (volume > newMaxVolume) {
+      applyVolumeSetting(newMaxVolume);
+    }
+  }
+
+  private void applyVolumeSetting(final int newVolume) {
     volume = newVolume;
     softVolumeScale = newVolume / 100f; // picked up by write loop on next iteration
     setSetting.setSetting(

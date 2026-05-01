@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getPlaybackState, resumePlayback, pausePlayback, stopPlayback, getVolume, setVolume, type PlaybackState } from '@/api/audio'
+import { getPlaybackState, resumePlayback, pausePlayback, stopPlayback, getVolume, setVolume, getMaxVolume, type PlaybackState } from '@/api/audio'
 
 const route = useRoute()
 
@@ -14,6 +14,7 @@ const navItems = [
 const playback = ref<PlaybackState>({ status: 'IDLE', currentTrackKind: null, currentTrackId: null })
 const playbackBusy = ref(false)
 const volume = ref(80)
+const maxVolume = ref(100)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 async function refreshPlayback() {
@@ -58,6 +59,11 @@ onMounted(async () => {
   await refreshPlayback()
   try {
     volume.value = await getVolume()
+  } catch {
+    // silently ignore
+  }
+  try {
+    maxVolume.value = await getMaxVolume()
   } catch {
     // silently ignore
   }
@@ -148,7 +154,7 @@ onUnmounted(() => {
           <input
             type="range"
             min="0"
-            max="100"
+            :max="maxVolume"
             :value="volume"
             @input="volume = +($event.target as HTMLInputElement).value"
             @change="onVolumeChange"
