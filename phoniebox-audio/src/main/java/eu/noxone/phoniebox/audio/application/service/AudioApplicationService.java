@@ -103,13 +103,11 @@ public class AudioApplicationService
             .map(Integer::parseInt)
             .orElse(DEFAULT_MAX_VOLUME);
     this.volume =
-        Math.min(
-            getSetting
-                .getSetting(AudioSettingKeys.VOLUME)
-                .map(Integer::parseInt)
-                .orElse(DEFAULT_VOLUME),
-            this.maxVolume);
-    this.softVolumeScale = this.volume / 100f;
+        getSetting
+            .getSetting(AudioSettingKeys.VOLUME)
+            .map(Integer::parseInt)
+            .orElse(DEFAULT_VOLUME);
+    this.softVolumeScale = effectiveScale();
   }
 
   // ── PlayAudioUseCase ──────────────────────────────────────────────────────
@@ -185,7 +183,13 @@ public class AudioApplicationService
     if (newVolume < 0 || newVolume > 100) {
       throw new IllegalArgumentException("Volume must be between 0 and 100, was: " + newVolume);
     }
-    applyVolumeSetting(Math.min(newVolume, maxVolume));
+    volume = newVolume;
+    softVolumeScale = effectiveScale();
+    setSetting.setSetting(
+        new SetSettingCommand(AudioSettingKeys.VOLUME, String.valueOf(newVolume)));
+    if (activeLine != null) {
+      applyVolumeHardware(activeLine, effectiveVolume());
+    }
   }
 
   // ── GetMaxVolumeUseCase / SetMaxVolumeUseCase ─────────────────────────────
@@ -202,21 +206,22 @@ public class AudioApplicationService
           "Max volume must be between 0 and 100, was: " + newMaxVolume);
     }
     maxVolume = newMaxVolume;
+    softVolumeScale = effectiveScale();
     setSetting.setSetting(
         new SetSettingCommand(AudioSettingKeys.MAX_VOLUME, String.valueOf(newMaxVolume)));
-    if (volume > newMaxVolume) {
-      applyVolumeSetting(newMaxVolume);
+    if (activeLine != null) {
+      applyVolumeHardware(activeLine, effectiveVolume());
     }
   }
 
-  private void applyVolumeSetting(final int newVolume) {
-    volume = newVolume;
-    softVolumeScale = newVolume / 100f; // picked up by write loop on next iteration
-    setSetting.setSetting(
-        new SetSettingCommand(AudioSettingKeys.VOLUME, String.valueOf(newVolume)));
-    if (activeLine != null) {
-      applyVolumeHardware(activeLine, newVolume);
-    }
+  /** Effective volume as an integer 0–100 passed to hardware controls. */
+  private int effectiveVolume() {
+    return volume * maxVolume / 100;
+  }
+
+  /** Effective scale factor 0.0–1.0 used for software PCM scaling. */
+  private float effectiveScale() {
+    return (volume * maxVolume) / 10000f;
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────
@@ -274,7 +279,7 @@ public class AudioApplicationService
           return;
         }
         activeLine = line;
-        hardwareVolume = applyVolumeHardware(line, volume);
+        hardwareVolume = applyVolumeHardware(line, effectiveVolume());
         line.start();
       }
 
